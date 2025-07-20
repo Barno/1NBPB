@@ -6,7 +6,7 @@
 #property copyright "Copyright 2025, MetaQuotes Ltd."
 #property link "https://www.mql5.com"
 
-#include "ErrorLogger.mqh"
+#include "Logger.mqh"
 //+------------------------------------------------------------------+
 //| DrawOnChart class                                                |
 //+------------------------------------------------------------------+
@@ -29,6 +29,7 @@ DrawOnChart::DrawOnChart()
 
 bool DrawOnChart::DrawArrow(double price, datetime orarioCandela, int fontSize)
 {
+  
   if (price == 0)
     price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
@@ -67,7 +68,7 @@ bool DrawOnChart::DrawArrow(double price, datetime orarioCandela, int fontSize)
     }
     else
     {
-      ErrorLogger::LogError("ERRORE creazione label: " + labelObjectName);
+      Logger::LogError("ERRORE creazione label: " + labelObjectName);
       return false;
     }
 
@@ -75,7 +76,7 @@ bool DrawOnChart::DrawArrow(double price, datetime orarioCandela, int fontSize)
   }
   else
   {
-    ErrorLogger::LogError("ERRORE creazione Arrow: " + arrowObjectName);
+    Logger::LogError("ERRORE creazione Arrow: " + arrowObjectName);
     return false;
   }
 }
