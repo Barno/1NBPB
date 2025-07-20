@@ -1,0 +1,19 @@
+{
+    "files.associations": {
+        "*.erd": "json",
+        "*.vuerd": "json",
+        "*.mq5": "cpp",
+        "*.mqh": "cpp"
+    },
+    "emeraldwalk.runonsave": {
+        "commands": [
+            {
+                "match": "\\.(mq[45h]?)$",
+                "cmd": "${workspaceFolder}/sync.sh && echo '✅ Sync completed!'",
+                "silent": false
+            }
+        ]
+    },
+    "C_Cpp.errorSquiggles": "disabled",
+    "C_Cpp.intelliSenseEngine": "disabled"
+}
