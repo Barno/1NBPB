@@ -6,7 +6,7 @@ class Logger
 {
 private:
     static int s_logLevel;
-    static bool s_silentMode;
+    
 
 public:
     enum LOG_LEVEL 
@@ -23,40 +23,36 @@ public:
     static void Error(const string message);
     static void Success(const string message);
     
-    static void SetLogLevel(int level);
-    static void SetSilentMode(bool silent);
-    static bool IsSilent();
+    static void SetLogLevel(int level);    
+    
     static void LogError(string message);
 };
 
-// ✅ DEFINIZIONI STATICHE (fuori dalla classe)
 static int Logger::s_logLevel = 0;
-static bool Logger::s_silentMode = false;
 
-// ✅ IMPLEMENTAZIONI
 static void Logger::Debug(const string message) 
 { 
-    if (!s_silentMode && s_logLevel <= LOG_DEBUG) Print("[DEBUG] ", message); 
+    if (s_logLevel <= LOG_DEBUG) Print("[DEBUG] ", message); 
 }
 
 static void Logger::Info(const string message) 
 { 
-    if (!s_silentMode && s_logLevel <= LOG_INFO) Print("[INFO] ", message); 
+    if (s_logLevel <= LOG_INFO) Print("[INFO] ", message); 
 }
 
 static void Logger::Warn(const string message) 
 { 
-    if (!s_silentMode && s_logLevel <= LOG_WARN) Print("[WARN] ", message); 
+    if (s_logLevel <= LOG_WARN) Print("[WARN] ", message); 
 }
 
 static void Logger::Error(const string message) 
 { 
-    if (!s_silentMode && s_logLevel <= LOG_ERROR) Print("[ERROR] ", message); 
+    if (s_logLevel <= LOG_ERROR) Print("[ERROR] ", message); 
 }
 
 static void Logger::Success(const string message) 
 { 
-    if (!s_silentMode && s_logLevel <= LOG_INFO) Print("[OK] ", message); 
+    if (s_logLevel <= LOG_INFO) Print("[OK] ", message); 
 }
 
 static void Logger::SetLogLevel(int level) 
@@ -64,15 +60,6 @@ static void Logger::SetLogLevel(int level)
     s_logLevel = level; 
 }
 
-static void Logger::SetSilentMode(bool silent) 
-{ 
-    s_silentMode = silent; 
-}
-
-static bool Logger::IsSilent() 
-{ 
-    return s_silentMode; 
-}
 
 static void Logger::LogError(string message)
 {

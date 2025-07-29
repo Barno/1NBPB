@@ -8,7 +8,7 @@ printf " Syncing $FOLDER to MT5... \n\n"
 
 # Percorsi
 PROJECT_DIR="$(pwd)"
-MT5_EXPERTS_BASE="/Users/$USER/Library/Application Support/net.metaquotes.wine.metatrader5/MQL5/Experts"
+MT5_EXPERTS_BASE="/Users/$USER/metatrader_master/drive_c/MetaTrader_Master/MQL5/Experts"
 MT5_EXPERTS="$MT5_EXPERTS_BASE/$FOLDER"
 
 printf " Checking paths... \n\n"
@@ -44,4 +44,4 @@ printf "\n\nSync completed!"
 printf " Now go to MT5 and compile"
 
 # Opzionale: apri MT5 automaticamente
-# open -a "MetaTrader 5"
+# open -a "MetaTrader 5"/Users/barno/metatrader_master/drive_c/MetaTrader_Master

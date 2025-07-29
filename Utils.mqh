@@ -18,24 +18,80 @@ public:
 
     static datetime Utils::GetDateOnly(datetime fullDateTime)
     {
-        // TRUCCO MATEMATICO per ottenere solo la data (senza orario)
-        //
-        // Esempio: 20 Luglio 2025, 14:30:45 → 20 Luglio 2025, 00:00:00
-        //
-        // Step 1: Divisione intera elimina i secondi del giorno corrente
-        // fullDateTime (es. 1753200645) / 86400 = 20291 giorni dall'1 Jan 1970
-        // La divisione intera taglia automaticamente la parte frazionaria (le ore)
-        long days = fullDateTime / SECONDS_PER_DAY;
+        // UNIX TIMESTAMP RESET
+        // MQL5 datetime = Unix timestamp (secondi dal 1 Jan 1970 UTC)
+        // Trucco: dividere per secondi/giorno elimina ore/minuti/secondi
 
-        // Step 2: Moltiplicazione ricostruisce il datetime solo con giorni completi
-        // 20291 * 86400 = 1753113600 secondi = 20 Luglio 2025, 00:00:00
-        // Risultato: stessa data ma con orario azzerato a mezzanotte
-        return (datetime)(days * SECONDS_PER_DAY);
+        long days = fullDateTime / SECONDS_PER_DAY; // Giorni completi dall'Unix Epoch
+        return (datetime)(days * SECONDS_PER_DAY);  // Mezzanotte dello stesso giorno
+    }
 
-        // Alternativa tradizionale (più lenta):
-        // MqlDateTime dt;
-        // TimeToStruct(fullDateTime, dt);
-        // dt.hour = 0; dt.min = 0; dt.sec = 0;
-        // return StructToTime(dt);
+    static datetime Utils::GetTime(datetime fullDateTime)
+    {
+        // UNIX TIMESTAMP RESET
+        // MQL5 datetime = Unix timestamp (secondi dal 1 Jan 1970 UTC)
+        // Trucco: dividere per secondi/giorno elimina ore/minuti/secondi
+
+        long days = fullDateTime / SECONDS_PER_DAY; // Giorni completi dall'Unix Epoch
+        return (datetime)(days * SECONDS_PER_DAY);  // Mezzanotte dello stesso giorno
+    }
+
+    static bool checkTime(datetime checkTime, int startHour, int startMin, int endHour, int endMin)
+    {
+        MqlDateTime dt;
+        TimeToStruct(checkTime, dt);
+
+        int currentMinutes = dt.hour * 60 + dt.min;
+        int startMinutes = startHour * 60 + startMin;
+        int endMinutes = endHour * 60 + endMin;
+
+        return (currentMinutes >= startMinutes && currentMinutes <= endMinutes);
+    }
+
+    static bool IsExactTime(int targetHour, int targetMinute)
+    {
+        MqlDateTime dt;
+        TimeToStruct(TimeCurrent(), dt);
+        return (dt.hour == targetHour && dt.min == targetMinute);
+    }
+
+    static bool IsExactTimeOnce(int targetHour, int targetMinute)
+    {
+        static int lastExecutedHour = -1;
+        static int lastExecutedMinute = -1;
+
+        if (IsExactTime(targetHour, targetMinute))
+        {
+            if (lastExecutedHour != targetHour || lastExecutedMinute != targetMinute)
+            {
+                lastExecutedHour = targetHour;
+                lastExecutedMinute = targetMinute;
+                return true;
+            }
+        }
+        else
+        {
+            // Reset quando cambia l'orario
+            if (lastExecutedHour == targetHour && lastExecutedMinute == targetMinute)
+            {
+                lastExecutedHour = -1;
+                lastExecutedMinute = -1;
+            }
+        }
+        return false;
+    }
+
+    static int GetCurrentHour()
+    {
+        MqlDateTime dt;
+        TimeToStruct(TimeCurrent(), dt);
+        return dt.hour;
+    }
+
+    static int GetCurrentMinute()
+    {
+        MqlDateTime dt;
+        TimeToStruct(TimeCurrent(), dt);
+        return dt.min;
     }
 };
