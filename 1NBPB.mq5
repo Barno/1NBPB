@@ -14,21 +14,27 @@
 #include "Logger.mqh"
 #include "Asset.mqh"
 #include "CandleAnalyzer.mqh"
+#include "OrderManager.mqh"
+#include "BrokerInfo.mqh"
 #include "TradingExecutor.mqh"
 
 input group "===  ORA CANDELA DI RIFERIMENTO ===";
 input ENUM_TIMEFRAMES referenceCandleTimeframe = PERIOD_M5; // Timeframe per candela di riferimento
-input int hourInput = 8;                                    // Ora Candela di riferimento
+int hourInput = 10;                                         // Ora Candela di riferimento
 input int minuteInput = 0;                                  // Minuti di riferimento per l'operazione
 
 input group "===  LIVELLO DI LOG ===";
 input Logger::LOG_LEVEL logLevel = Logger::LOG_DEBUG; // Livello di log
 
+input int OffsetPoints = 5; // Punti di offset dal high/low
+input int numeroTarget = 1;
+
 //+------------------------------------------------------------------+
 //| Global variables                                                 |
 //+------------------------------------------------------------------+
 DrawOnChart *drawOnChart = NULL; // Istanza della classe per disegnare sul grafico
-datetime currentTime;            // Variabile per tenere traccia del tempo corrente
+OrderManager *om = new OrderManager("Morning Strategy");
+
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -36,11 +42,11 @@ int OnInit()
 {
     drawOnChart = new DrawOnChart();
     Logger::SetLogLevel(logLevel);
-    Logger::Debug("DrawOnChart instance created");
-    Logger::Info("EA initialized");
-    Logger::Info("MIN LOT " + Asset::GetMinLot(_Symbol)); // Esempio di chiamata per verificare Asset
-    Logger::Info("STEP " + Asset::GetLotStep(_Symbol));
-    Logger::Info("Dimensione di un contratto " + Asset::GetContractSize(_Symbol));
+
+    // Info di avvio
+    Asset::Initialize();
+    // BrokerInfo::Initialize();
+    // BrokerInfo::LogTradingInfo();
 
     if (drawOnChart == NULL)
     {
@@ -110,20 +116,20 @@ void checkCandle()
         // Usa gli input invece di valori hardcodati
         CandleAnalyzer::PrintCandleInfo(hourInput, minuteInput, referenceCandleTimeframe);
 
-        // La tua logica di trading
         if (CandleAnalyzer::IsBearCandle(hourInput, minuteInput, referenceCandleTimeframe))
         {
-            double low = CandleAnalyzer::GetCandleLow(hourInput, minuteInput, referenceCandleTimeframe);
-            Logger::Info("Bear candle - placing buy stop below: " + DoubleToString(low, 5));
-            // OrderManager::PlaceBuyStop(low - 5*Point, ...);
+            Logger::Info("Bear candle detected - placing buy stop below low");
+            bool success = om.CreateBuyTargetsBelowCandle(hourInput, minuteInput, referenceCandleTimeframe, 0, numeroTarget, 0.1);
+            om.PrintAllTargets();
+            om.ExecuteAllTargets();
         }
         else
         {
-            double high = CandleAnalyzer::GetCandleHigh(hourInput, minuteInput, referenceCandleTimeframe);
-            Logger::Info("Bull candle - placing sell stop above: " + DoubleToString(high, 5));
-            // OrderManager::PlaceSellStop(high + 5*Point, ...);
+            Logger::Info("Bull candle detected - placing sell stop above high");
         }
     }
+
+    om.OnTick();
 }
 void OnTimer()
 {
