@@ -106,41 +106,64 @@ public:
         return baseMagic + counter;
     }
 
-    static double getRR(double entryPrice, double stopLossPrice, double rr = 1.8)
+    /**
+     * Calcola la distanza in punti tra due prezzi
+     *
+     * @param fromPrice        Prezzo di partenza
+     * @param toPrice          Prezzo di arrivo
+     * @param additionalPoints Punti aggiuntivi da sommare (default 0)
+     * @param useAbsolute      Se true usa valore assoluto, se false mantiene il segno (default true)
+     *
+     * @return Distanza in punti
+     */
+    static double GetDistanceInPoints(double fromPrice, double toPrice, double additionalPoints = 0.0, bool useAbsolute = true)
     {
-        double riskDistance = entryPrice - stopLossPrice;
-        double takeProfit = entryPrice + (riskDistance * rr);
-        return NormalizeDouble(takeProfit, _Digits);
+        // toPrice = 9140.88;
+        // fromPrice = 9143.19;
+        //  risultato 231 UK100 ompany: Five Percent Online Ltd
+
+        double distance = (toPrice - fromPrice) / _Point;
+
+        if (useAbsolute)
+            distance = MathAbs(distance);
+
+        return distance + additionalPoints;
     }
 
     /**
-     * Calcola il numero massimo di lotti acquistabili rispettando il risk management
+     * Calcola prezzo con offset direzionale
      *
-     * Implementa la formula: Lotti = RiskAmount / (RiskDistance × UnitCost + Commissioni)
-     * Gestisce automaticamente la conversione valuta quando l'asset è quotato in valuta
-     * diversa da quella dell'account (es: UK100 in GBP, account in USD).
+     * @param basePrice    Prezzo di base di riferimento
+     * @param offsetPoints Punti di offset (sempre valore positivo)
+     * @param above        true = prezzo finale SOPRA il base (base + offset)
+     *                     false = prezzo finale SOTTO il base (base - offset)
      *
-     * @param riskPercent   Percentuale del balance da rischiare (default 0.5%)
-     * @param entryPrice    Prezzo di entrata della posizione
-     * @param stopLossPrice Prezzo di stop loss
-     *
-     * @return Numero di lotti normalizzati secondo il volume step del broker
-     *
-     * @note Per asset cross-currency, ricostruisce il tick value usando:
-     *       UnitCost = TickSize × ContractSize × ExchangeRate
-     * @note Il risultato è normalizzato secondo SYMBOL_VOLUME_STEP del broker
-     * @note Restituisce 0.0 se i parametri sono invalidi o se il rischio è zero
+     * @return Prezzo normalizzato secondo _Digits
      *
      * @example
-     *   double lots = Utils::getLots(9144.00, 9152.97,1.0, ); // Rischia 1% con entry-stop
+     *   // Entry sotto il candleLow per LONG
+     *   double entryPrice = GetPriceWithOffset(candleLow, 5, false);  // candleLow - 5 punti
+     *
+     *   // Take profit sopra l'entry
+     *   double takeProfit = GetPriceWithOffset(entryPrice, 100, true); // entryPrice + 100 punti
      */
-    static double getLots(double entryPrice, double stopLossPrice, double riskPercent = 0.5)
+    static double GetPriceWithOffset(double basePrice, double offsetPoints, bool above = true)
     {
+        double offset = above ? offsetPoints : -offsetPoints;
+        double newPrice = basePrice + (offset * _Point);
+        return NormalizeDouble(newPrice, _Digits);
+    }
 
-        // Distanza in punti
-        double riskDistance = MathAbs(entryPrice - stopLossPrice) / _Point;
-        if (riskDistance <= 0)
-            return 0.0;
+    static double getRR(double entryPrice, double riskDistancePoints, double rr = 1.8)
+    {
+        double takeProfit = entryPrice + (riskDistancePoints * _Point * rr);
+        return NormalizeDouble(takeProfit, _Digits);
+    }
+
+    // riskDistancePoints = distanza in punti tra entry e stop loss
+    // riskPercent = percentuale di rischio sul saldo del conto
+    static double getLots(double riskDistancePoints, double riskPercent = 0.5)
+    {
 
         string accountCurrency = AccountInfoString(ACCOUNT_CURRENCY);
         string assetCurrency = SymbolInfoString(_Symbol, SYMBOL_CURRENCY_BASE);
@@ -149,18 +172,24 @@ public:
         double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
         double commission = 0.0; // TODO
 
+        // riskDistancePoints = 935; // TEST
+        // riskAmount = 500; // TEST
+
         if (accountCurrency != assetCurrency)
         {
             double exchangeRate = Utils::GetAssetToAccountRate(_Symbol);
+            // exchangeRate = 1.33497; //TEST
             double contractSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_CONTRACT_SIZE);
             double unitCost = _Point * contractSize * exchangeRate;
             tickValue = unitCost;
         }
 
+        // TEST DEVE TORNARE 40.05 UK100 ompany: Five Percent Online Ltd
+
         if (riskAmount <= 0 || tickValue <= 0)
             return 0.0;
 
-        double maxLots = riskAmount / (riskDistance * tickValue + 2 * commission);
+        double maxLots = riskAmount / (riskDistancePoints * tickValue + 2 * commission);
 
         // Normalizza secondo il volume step del broker
         double volumeStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
@@ -217,7 +246,7 @@ private:
         }
 
         // Prova con suffissi comuni del broker
-        string suffixes[5] = {"", ".m", ".i", ".c", ".raw"}; // ← CORRETTO
+        string suffixes[5] = {"", ".m", ".i", ".c", ".raw"};
 
         for (int i = 0; i < ArraySize(suffixes); i++)
         {

@@ -119,7 +119,7 @@ void checkCandle()
         if (CandleAnalyzer::IsBearCandle(hourInput, minuteInput, referenceCandleTimeframe))
         {
             Logger::Info("Bear candle detected - placing buy stop below low");
-            bool success = om.CreateBuyTargetsBelowCandle(hourInput, minuteInput, referenceCandleTimeframe, 0, numeroTarget, 0.1);
+            bool success = om.CreateBuyTargetsBelowCandle(hourInput, minuteInput, referenceCandleTimeframe, 0, numeroTarget);
             om.PrintAllTargets();
             om.ExecuteAllTargets();
         }

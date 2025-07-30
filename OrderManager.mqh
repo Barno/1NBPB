@@ -66,7 +66,7 @@ public:
 
     // Creazione target
     bool CreateBuyTargetsBelowCandle(int targetHour, int targetMinute, ENUM_TIMEFRAMES timeframe,
-                                     double offsetPoints, int numeroTarget, double totalVolume);
+                                     double offsetPoints, int numeroTarget);
 
     // Esecuzione
     bool ExecuteAllTargets();
@@ -111,18 +111,12 @@ void OrderManager::SetBreakevenTrigger(int tpLevel)
 
 // Creazione target
 bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute, ENUM_TIMEFRAMES timeframe,
-                                               double offsetPoints, int numeroTarget, double totalVolume)
+                                               double offsetPoints, int numeroTarget)
 {
     // === STEP 1: Validazione input ===
     if (numeroTarget <= 0)
     {
         Logger::Error("[" + strategyName + "] Invalid numeroTarget: " + IntegerToString(numeroTarget));
-        return false;
-    }
-
-    if (totalVolume <= 0)
-    {
-        Logger::Error("[" + strategyName + "] Invalid totalVolume: " + DoubleToString(totalVolume, 2));
         return false;
     }
 
@@ -137,34 +131,50 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
         return false;
     }
 
+    // TEST UK100 Five Percent Online Ltd
+    //  candleHigh = 9136.04;
+    //  candleLow = 9141.60;
+    //  offsetPoints = 0;
+    //  EXPECTED_RISK_DISTANCE_POINTS = 556.0
+    //  EXPECTED_TAKE_PROFIT_PRICE = 9151.61
+    //  EXPECTED_RISK_REWARD_RATIO = 1.8
+
     // === STEP 3: Calcola prezzo di entry ===
     // entryPrice = candleLow - (offsetPoints * _Point);
     // entryPrice = NormalizeDouble(entryPrice, _Digits);
-    double entryPrice = NormalizeDouble(candleLow - (offsetPoints * _Point), _Digits);
 
-    double candleRangePoints = MathAbs(candleHigh - candleLow) / _Point;
-    double stopLossPrice = NormalizeDouble(entryPrice - (candleRangePoints * _Point), _Digits);
-    double riskDistance = stopLossPrice / _Point;
+    // === CALCOLO ENTRY PRICE ===
+    // Entry sotto il minimo della candela di riferimento
+    double entryPrice = Utils::GetPriceWithOffset(candleLow, offsetPoints, false);
 
-    double lotti = Utils::getLots(0.5, entryPrice, stopLossPrice); // Esempio di calcolo lotti
+    // === CALCOLO STOP LOSS IN PUNTI ===
+    // Stop loss = range completo della candela + offset entry
+    // Logica: rischi dalla candela completa + punti aggiuntivi dell'offset
+    double riskDistancePoints = Utils::GetDistanceInPoints(candleLow, candleHigh, offsetPoints);
+
+    double stopLossPrice = Utils::GetPriceWithOffset(entryPrice, riskDistancePoints, false);
+
+    // === CALCOLO LOTTI ===
+    // Calcola lotti massimi rispettando il risk management
+    double lotti = Utils::getLots(riskDistancePoints, 0.5);
+
     Logger::Info(StringFormat("Calculated lots: %.2f", lotti));
 
-    if (riskDistance <= 0)
+    if (riskDistancePoints <= 0)
     {
-        Logger::Error("[" + strategyName + "] Invalid risk distance: " + DoubleToString(riskDistance, _Digits));
+        Logger::Error("[" + strategyName + "] Invalid risk distance: " + DoubleToString(riskDistancePoints, _Digits));
         return false;
     }
 
     // === STEP 4: Calcola volume per target ===
-    double volumePerTarget = totalVolume / numeroTarget;
-    volumePerTarget = NormalizeDouble(volumePerTarget, 2);
+    double lottiPerTarget = lotti / numeroTarget;
 
     // === STEP 5: Info iniziale ===
     Logger::Info(StringFormat("[%s] === Creating %d BUY targets ===", strategyName, numeroTarget));
     Logger::Info(StringFormat("[%s] Candle Low: %.5f", strategyName, candleLow));
     Logger::Info(StringFormat("[%s] Entry Price: %.5f (-%d points)", strategyName, entryPrice, (int)offsetPoints));
-    Logger::Info(StringFormat("[%s] Risk Distance: %.5f", strategyName, riskDistance));
-    Logger::Info(StringFormat("[%s] Volume per target: %.2f", strategyName, volumePerTarget));
+    Logger::Info(riskDistancePoints > 0 ? StringFormat("[%s] Risk Distance: %.2f points", strategyName, riskDistancePoints) : "Risk distance is zero");
+    Logger::Info(StringFormat("[%s] Volume per target: %.2f", strategyName, lottiPerTarget));
 
     // === STEP 6: Pulisci target precedenti ===
     targets.Clear();
@@ -178,10 +188,10 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
         double currentRR = 1.8 + ((i - 1) * 0.2); // 1.8, 2.0, 2.2, 2.4, 2.6...
 
         // Calcola TP basato su RR
-        double takeProfitPrice = Utils::getRR(entryPrice, stopLossPrice, currentRR);
+        double takeProfitPrice = Utils::getRR(entryPrice, riskDistancePoints, currentRR);
 
         // Crea il target
-        if (CreateSingleBuyTarget(entryPrice, volumePerTarget, takeProfitPrice, currentRR, i, stopLossPrice))
+        if (CreateSingleBuyTarget(entryPrice, lottiPerTarget, takeProfitPrice, currentRR, i, stopLossPrice))
         {
             Logger::Info(StringFormat("[%s] Target %d created: RR=%.1f, TP=%.5f",
                                       strategyName, i, currentRR, takeProfitPrice));
@@ -197,7 +207,7 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
     if (allTargetsCreated)
     {
         Logger::Info(StringFormat("[%s] Successfully created all %d targets", strategyName, numeroTarget));
-        Logger::Info(StringFormat("[%s] Total volume: %.2f distributed across targets", strategyName, totalVolume));
+        Logger::Info(StringFormat("[%s] Total volume (lotti): %.2f distributed across targets", strategyName, lotti));
         return true;
     }
     else
