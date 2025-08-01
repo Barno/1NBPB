@@ -162,9 +162,8 @@ public:
 
     // riskDistancePoints = distanza in punti tra entry e stop loss
     // riskPercent = percentuale di rischio sul saldo del conto
-    static double getLots(double riskDistancePoints, double riskPercent = 0.5)
+    static double getVolume(double riskDistancePoints, int NumeroTarget = 1, double riskPercent = 0.5)
     {
-
         string accountCurrency = AccountInfoString(ACCOUNT_CURRENCY);
         string assetCurrency = SymbolInfoString(_Symbol, SYMBOL_CURRENCY_BASE);
 
@@ -173,28 +172,51 @@ public:
         double commission = 0.0; // TODO
 
         // riskDistancePoints = 935; // TEST
-        // riskAmount = 500; // TEST
+        // riskAmount = 500;         // TEST
 
         if (accountCurrency != assetCurrency)
         {
             double exchangeRate = Utils::GetAssetToAccountRate(_Symbol);
-            // exchangeRate = 1.33497; //TEST
+            // exchangeRate = 1.33497; // TEST
             double contractSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_CONTRACT_SIZE);
             double unitCost = _Point * contractSize * exchangeRate;
             tickValue = unitCost;
         }
 
-        // TEST DEVE TORNARE 40.05 UK100 ompany: Five Percent Online Ltd
-
         if (riskAmount <= 0 || tickValue <= 0)
             return 0.0;
 
-        double maxLots = riskAmount / (riskDistancePoints * tickValue + 2 * commission);
+        // TEST DEVE TORNARE 40.05 UK100 Five Percent Online Ltd
+        double volume = riskAmount / (riskDistancePoints * tickValue + 2 * commission);
 
-        // Normalizza secondo il volume step del broker
-        double volumeStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
-        maxLots = MathFloor(maxLots / volumeStep) * volumeStep;
-        return NormalizeDouble(maxLots, 2);
+        // Dividi per numero target
+        double volumePerTarget = volume / NumeroTarget;
+
+        // Normalizza il volume al passo minimo
+        return Utils::NormalizeVolume(volumePerTarget);
+    }
+
+    static double NormalizeVolume(double volume, string symbol = "")
+    {
+        if (symbol == "")
+            symbol = _Symbol;
+
+        double volumeStep = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+        double minVolume = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
+        double maxVolume = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
+
+        // Normalizza al lot step più vicino
+        if (volumeStep > 0)
+        {
+            volume = MathRound(volume / volumeStep) * volumeStep;
+            volume = NormalizeDouble(volume, 2);
+        }
+
+        // Applica i limiti min/max
+        volume = MathMax(volume, minVolume);
+        volume = MathMin(volume, maxVolume);
+
+        return volume;
     }
 
     static double GetExchangeRate(string fromCurrency, string toCurrency)

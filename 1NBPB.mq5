@@ -20,14 +20,27 @@
 
 input group "===  ORA CANDELA DI RIFERIMENTO ===";
 input ENUM_TIMEFRAMES referenceCandleTimeframe = PERIOD_M5; // Timeframe per candela di riferimento
-int hourInput = 10;                                         // Ora Candela di riferimento
-input int minuteInput = 0;                                  // Minuti di riferimento per l'operazione
+input int HourInput = 10;                                   // Ora Candela di riferimento
+input int MinuteInput = 0;                                  // Minuti di riferimento per l'operazione
 
 input group "===  LIVELLO DI LOG ===";
 input Logger::LOG_LEVEL logLevel = Logger::LOG_DEBUG; // Livello di log
 
+input group "=== OPZIONI DI ENTRATA ===";
 input int OffsetPoints = 5; // Punti di offset dal high/low
-input int numeroTarget = 1;
+input int Deviation = 5;    // Quantità di punti di deviazione che si accettano per l'ordine (slippage)
+
+input group "===  TAKE PROFIT PRINCIPALI ===";
+input int NumeroTarget = 2;
+input double TP1_RiskReward = 1.8;         // TP1: Rapporto Rischio/Rendimento (1:0.5)
+input double TP1_PercentualeVolume = 50.0; // TP1: Percentuale volume posizione (%)
+input double TP2_RiskReward = 3.0;         // TP2: Rapporto Rischio/Rendimento (1:3.0)
+input double TP2_PercentualeVolume = 50.0; // TP2: Percentuale volume posizione (%)
+input bool AttivareBreakevenDopoTP = true; // Attiva breakeven automatico dopo TP
+input int BreakevenAfterTPNumber = 1;      // Dopo quale TP attivare breakeven (1,2,
+
+input group "===  GESTIONE RISCHIO ===" input double RischioPercentuale = 0.5; // Percentuale rischio per trade (% del capitale) ()
+input bool UsaEquityPerRischio = true;                                         // MODALITÀ RISCHIO: false=Balance fisso, true=Equity dinamico
 
 //+------------------------------------------------------------------+
 //| Global variables                                                 |
@@ -46,7 +59,7 @@ int OnInit()
     // Info di avvio
     Asset::Initialize();
     // BrokerInfo::Initialize();
-    // BrokerInfo::LogTradingInfo();
+    BrokerInfo::LogTradingInfo();
 
     if (drawOnChart == NULL)
     {
@@ -54,9 +67,9 @@ int OnInit()
         return INIT_FAILED;
     }
 
-    if (!drawOnChart.DrawArrow(0, Utils::CreateDateTime(hourInput, minuteInput)))
+    if (!drawOnChart.DrawArrow(0, Utils::CreateDateTime(HourInput, MinuteInput)))
     {
-        Logger::LogError("Failed to draw arrow on chart at " + TimeToString(Utils::CreateDateTime(hourInput, minuteInput), TIME_DATE | TIME_MINUTES));
+        Logger::LogError("Failed to draw arrow on chart at " + TimeToString(Utils::CreateDateTime(HourInput, MinuteInput), TIME_DATE | TIME_MINUTES));
         return INIT_FAILED;
     }
 
@@ -108,18 +121,18 @@ void checkCandle()
         additionalMinutes = TimeUtils::getMinutesFromPeriod(referenceCandleTimeframe);
     }
 
-    if (TradingExecutor::ShouldExecuteTrade(hourInput, minuteInput, additionalMinutes, 0, 20))
+    if (TradingExecutor::ShouldExecuteTrade(HourInput, MinuteInput, additionalMinutes, 0, 20))
     {
         Logger::Debug("GetExecutedDate: " + TimeToString(TradingExecutor::GetExecutedDate(), TIME_DATE));
         Print("ESEGUO TRADE!");
 
         // Usa gli input invece di valori hardcodati
-        CandleAnalyzer::PrintCandleInfo(hourInput, minuteInput, referenceCandleTimeframe);
+        CandleAnalyzer::PrintCandleInfo(HourInput, MinuteInput, referenceCandleTimeframe);
 
-        if (CandleAnalyzer::IsBearCandle(hourInput, minuteInput, referenceCandleTimeframe))
+        if (CandleAnalyzer::IsBearCandle(HourInput, MinuteInput, referenceCandleTimeframe))
         {
             Logger::Info("Bear candle detected - placing buy stop below low");
-            bool success = om.CreateBuyTargetsBelowCandle(hourInput, minuteInput, referenceCandleTimeframe, 0, numeroTarget);
+            bool success = om.CreateBuyTargetsBelowCandle(HourInput, MinuteInput, referenceCandleTimeframe, OffsetPoints, NumeroTarget);
             om.PrintAllTargets();
             om.ExecuteAllTargets();
         }
@@ -141,7 +154,7 @@ void OnTimer()
         Logger::Info(" Nuovo giorno: " + TimeToString(currentDay, TIME_DATE));
 
         drawOnChart.DeleteAllObjects();
-        drawOnChart.DrawArrow(0, Utils::CreateDateTime(hourInput, minuteInput));
+        drawOnChart.DrawArrow(0, Utils::CreateDateTime(HourInput, MinuteInput));
         lastCheckDay = currentDay;
     }
 }

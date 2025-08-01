@@ -63,6 +63,7 @@ public:
     static bool Initialize();
     static void LogAssetInfo(const string symbol);
     static bool ValidateSymbol(const string symbol);
+    static int GetMinStopTrade(const string symbol);
 
 private:
     static bool IsCacheValid(const string symbol);
@@ -482,6 +483,7 @@ static void Asset::LogAssetInfo(const string symbol)
     Logger::Info("Trade Allowed: " + (IsTradeAllowed(symbol) ? "YES" : "NO"));
     Logger::Info("Current Bid: " + DoubleToString(GetBid(symbol), GetDigits(symbol)));
     Logger::Info("Current Ask: " + DoubleToString(GetAsk(symbol), GetDigits(symbol)));
+    Logger::Info("Get MinStop: " + GetMinStopTrade(symbol) + " points");
     Logger::Info("=== End Asset Info ===");
 }
 
@@ -516,6 +518,24 @@ static bool Asset::ValidateSymbol(const string symbol)
     }
 
     return true;
+}
+
+/**
+ * Ottiene il minimo stop trade in punti per il simbolo corrente.
+ * Cioè il livello minimo di stop trade che può essere impostato.
+ * Utilizza SYMBOL_TRADE_STOPS_LEVEL per ottenere il livello minimo di stop trade.
+ * Se il valore è negativo o zero, restituisce 0 e logga un errore.
+ */
+static int Asset::GetMinStopTrade(const string symbol)
+{
+    // Ottieni il minimo stop trade in punti
+    int stopsLevel = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
+    if (stopsLevel < 0)
+    {
+        Logger::Error("Invalid minimum stop trade for symbol: " + symbol);
+        return 0;
+    }
+    return stopsLevel;
 }
 
 // === PRIVATE CACHE METHODS ===

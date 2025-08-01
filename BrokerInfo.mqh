@@ -11,6 +11,7 @@ public:
     static void LogTradingInfo();
     static string GetBrokerSummary();
     static bool Initialize();
+    static void PrintFillingModes();
 
     // === INFO ESSENZIALI ===
     static string GetCompanyName();
@@ -62,6 +63,7 @@ static void BrokerInfo::LogTradingInfo()
     Logger::Info("Max Orders: " + IntegerToString(GetMaxOrders()));
     Logger::Info("Expert Allowed: " + (IsExpertAllowed() ? "YES" : "NO"));
     Logger::Info("Trade Allowed: " + (IsTradeAllowed() ? "YES" : "NO"));
+    PrintFillingModes();
     Logger::Info("=== END BROKER INFO ===");
 
     // Log timezone dettagliato separato
@@ -202,6 +204,15 @@ static string BrokerInfo::GetServerTimezone()
     default:
         return "GMT" + (offset >= 0 ? "+" : "") + IntegerToString(offset);
     }
+}
+
+static void BrokerInfo::PrintFillingModes()
+{
+    int filling = (int)SymbolInfoInteger(_Symbol, SYMBOL_FILLING_MODE);
+    if (filling & SYMBOL_FILLING_IOC)
+        Logger::Info("IOC permesso");
+    if (filling & SYMBOL_FILLING_FOK)
+        Logger::Info("FOK permesso");
 }
 
 static bool BrokerInfo::IsDaylightSaving()

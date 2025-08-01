@@ -6,6 +6,7 @@ class CTargetInfo : public CObject
 {
 public:
     MqlTradeRequest request;
+    MqlTradeCheckResult check;
     MqlTradeResult result;
     bool isExecuted;
     bool isRunning;
@@ -16,6 +17,7 @@ public:
     CTargetInfo(void)
     {
         ZeroMemory(request);
+        ZeroMemory(check);
         ZeroMemory(result);
         isExecuted = false;
         isRunning = false;
@@ -29,7 +31,7 @@ public:
     // Metodo di utilità per debug
     string ToString(void)
     {
-        return StringFormat("Target%d: RR=%.1f, Price=%.5f, TP=%.5f, Vol=%.2f, Executed=%s, Running=%s",
+        return StringFormat("Target%d: RR=%.1f, Price=%.5f, TP=%.5f, Vol=%.8f, Executed=%s, Running=%s",
                             targetLevel, riskReward, request.price, request.tp, request.volume,
                             isExecuted ? "YES" : "NO", isRunning ? "YES" : "NO");
     }
@@ -66,7 +68,7 @@ public:
 
     // Creazione target
     bool CreateBuyTargetsBelowCandle(int targetHour, int targetMinute, ENUM_TIMEFRAMES timeframe,
-                                     double offsetPoints, int numeroTarget);
+                                     double offsetPoints, int NumeroTarget);
 
     // Esecuzione
     bool ExecuteAllTargets();
@@ -111,12 +113,12 @@ void OrderManager::SetBreakevenTrigger(int tpLevel)
 
 // Creazione target
 bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute, ENUM_TIMEFRAMES timeframe,
-                                               double offsetPoints, int numeroTarget)
+                                               double offsetPoints, int NumeroTarget)
 {
     // === STEP 1: Validazione input ===
-    if (numeroTarget <= 0)
+    if (NumeroTarget <= 0)
     {
-        Logger::Error("[" + strategyName + "] Invalid numeroTarget: " + IntegerToString(numeroTarget));
+        Logger::Error("[" + strategyName + "] Invalid NumeroTarget: " + IntegerToString(NumeroTarget));
         return false;
     }
 
@@ -155,10 +157,10 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
     double stopLossPrice = Utils::GetPriceWithOffset(entryPrice, riskDistancePoints, false);
 
     // === CALCOLO LOTTI ===
-    // Calcola lotti massimi rispettando il risk management
-    double lotti = Utils::getLots(riskDistancePoints, 0.5);
+    // Calcola lotti massimi rispettando il risk management divisi per target
+    double volume = Utils::getVolume(riskDistancePoints, NumeroTarget, RischioPercentuale);
 
-    Logger::Info(StringFormat("Calculated lots: %.2f", lotti));
+    Logger::Info(StringFormat("Calculated lots per target: %.2f – volume totale ordine %.2f", volume, volume * NumeroTarget));
 
     if (riskDistancePoints <= 0)
     {
@@ -166,15 +168,12 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
         return false;
     }
 
-    // === STEP 4: Calcola volume per target ===
-    double lottiPerTarget = lotti / numeroTarget;
-
     // === STEP 5: Info iniziale ===
-    Logger::Info(StringFormat("[%s] === Creating %d BUY targets ===", strategyName, numeroTarget));
+    Logger::Info(StringFormat("[%s] === Creating %d BUY targets ===", strategyName, NumeroTarget));
     Logger::Info(StringFormat("[%s] Candle Low: %.5f", strategyName, candleLow));
     Logger::Info(StringFormat("[%s] Entry Price: %.5f (-%d points)", strategyName, entryPrice, (int)offsetPoints));
     Logger::Info(riskDistancePoints > 0 ? StringFormat("[%s] Risk Distance: %.2f points", strategyName, riskDistancePoints) : "Risk distance is zero");
-    Logger::Info(StringFormat("[%s] Volume per target: %.2f", strategyName, lottiPerTarget));
+    Logger::Info(StringFormat("[%s] Volume per target: %.2f", strategyName, volume));
 
     // === STEP 6: Pulisci target precedenti ===
     targets.Clear();
@@ -182,7 +181,7 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
     // === STEP 7: Ciclo creazione target ===
     bool allTargetsCreated = true;
 
-    for (int i = 1; i <= numeroTarget; i++)
+    for (int i = 1; i <= NumeroTarget; i++)
     {
         // Calcola RR per questo target
         double currentRR = 1.8 + ((i - 1) * 0.2); // 1.8, 2.0, 2.2, 2.4, 2.6...
@@ -191,7 +190,7 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
         double takeProfitPrice = Utils::getRR(entryPrice, riskDistancePoints, currentRR);
 
         // Crea il target
-        if (CreateSingleBuyTarget(entryPrice, lottiPerTarget, takeProfitPrice, currentRR, i, stopLossPrice))
+        if (CreateSingleBuyTarget(entryPrice, volume, takeProfitPrice, currentRR, i, stopLossPrice))
         {
             Logger::Info(StringFormat("[%s] Target %d created: RR=%.1f, TP=%.5f",
                                       strategyName, i, currentRR, takeProfitPrice));
@@ -206,8 +205,8 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
     // === STEP 8: Risultato finale ===
     if (allTargetsCreated)
     {
-        Logger::Info(StringFormat("[%s] Successfully created all %d targets", strategyName, numeroTarget));
-        Logger::Info(StringFormat("[%s] Total volume (lotti): %.2f distributed across targets", strategyName, lotti));
+        Logger::Info(StringFormat("[%s] Successfully created all %d targets", strategyName, NumeroTarget));
+        Logger::Info(StringFormat("[%s] Total volume (lotti): %.2f distributed across targets", strategyName, volume * NumeroTarget));
         return true;
     }
     else
@@ -236,6 +235,13 @@ bool OrderManager::ExecuteAllTargets()
         CTargetInfo *target = targets.At(i);
         if (target == NULL)
             continue;
+
+        if (!OrderCheck(target.request, target.check))
+        {
+            Logger::Error("OrderCheck fallito: " + target.check.retcode + " - " + target.check.comment);
+            target.ToString();
+            continue;
+        }
 
         if (!target.isExecuted)
         {
@@ -335,6 +341,14 @@ bool OrderManager::CloseAllTargets()
             request.action = TRADE_ACTION_REMOVE;
             request.order = target.result.order;
 
+            // 1. Verifica la validità dell'ordine con OrderCheck
+            if (!OrderCheck(target.request, target.check))
+            {
+                Logger::Error("OrderCheck fallito: " + target.check.retcode + " - " + target.check.comment);
+                target.ToString();
+                continue;
+            }
+
             if (OrderSend(request, result))
             {
                 target.isRunning = false;
@@ -385,6 +399,7 @@ void OrderManager::PrintAllTargets()
 // === IMPLEMENTAZIONI METODI PRIVATI ===
 
 // Creazione singolo target (metodo helper)
+// pusha
 bool OrderManager::CreateSingleBuyTarget(double entryPrice, double volume, double takeProfit, double rr, int level, double stopLossPrice)
 {
     // === Crea nuovo CTargetInfo ===
@@ -406,7 +421,7 @@ bool OrderManager::CreateSingleBuyTarget(double entryPrice, double volume, doubl
     target.request.sl = stopLossPrice; // SL gestito separatamente per breakeven prezzo
     target.request.magic = Utils::GenerateUniqueMagic();
     target.request.comment = StringFormat("%s-T%d-RR%.1f", strategyName, level, rr);
-    target.request.deviation = 3;
+    target.request.deviation = Deviation;
     target.request.type_filling = ORDER_FILLING_FOK;
 
     // === Configura info aggiuntive ===
