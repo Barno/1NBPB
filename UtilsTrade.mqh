@@ -44,7 +44,7 @@ public:
 };
 
 //+------------------------------------------------------------------+
-//| IMPLEMENTAZIONE                                                  |
+//| IMPLEMENTAZIONI                                                  |
 //+------------------------------------------------------------------+
 
 static double UtilsTrade::GetRealEntryPrice(ENUM_ORDER_TYPE order_type,

@@ -31,7 +31,7 @@ public:
     static void Debug(const string message, const string className = "") { PrintLog("[DEBUG]", LEVEL_DEBUG, message, className); }
     static void Info(const string message, const string className = "") { PrintLog("[INFO]", LEVEL_INFO, message, className); }
     static void Warn(const string message, const string className = "") { PrintLog("[WARN]", LEVEL_WARN, message, className); }
-    static void Error(const string message, const string className = "") { PrintLog("[ERROR]", LEVEL_ERROR, message, className); }
+    static void Error(const string message, const string className = "") { PrintLog("[!!! ERROR !!!]", LEVEL_ERROR, message, className); }
     static void Success(const string message, const string className = "") { PrintLog("[OK]", LEVEL_INFO, message, className); }
 
     static void SetLogLevel(int level) { s_logLevel = level; }

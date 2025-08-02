@@ -19,6 +19,11 @@ private:
     static int counter;
 
 public:
+    /**
+     *
+     * ===== OPERAZIONI TIME
+     *
+     **/
     // Crea un datetime a partire da ora e minuti
     // Se pHour e pMinute sono 0, usa l'ora corrente
     static datetime CreateDateTime(int pHour = 0, int pMinute = 0)
@@ -117,6 +122,12 @@ public:
     }
 
     /**
+     *
+     * ===== PUNTI E PREZZI
+     *
+     **/
+
+    /**
      * Calcola la distanza in punti tra due prezzi
      *
      * @param fromPrice        Prezzo di partenza
@@ -172,7 +183,7 @@ public:
 
     // riskDistancePoints = distanza in punti tra entry e stop loss
     // riskPercent = percentuale di rischio sul saldo del conto
-    static double getVolume(double riskDistancePoints, int NumeroTarget = 1, double riskPercent = 0.5)
+    static double getVolume(double riskDistancePoints, double riskPercent = 0.5)
     {
         string accountCurrency = AccountInfoString(ACCOUNT_CURRENCY);
         string assetCurrency = SymbolInfoString(_Symbol, SYMBOL_CURRENCY_BASE);
@@ -199,11 +210,8 @@ public:
         // TEST DEVE TORNARE 40.05 UK100 Five Percent Online Ltd
         double volume = riskAmount / (riskDistancePoints * tickValue + 2 * commission);
 
-        // Dividi per numero target
-        double volumePerTarget = volume / NumeroTarget;
-
         // Normalizza il volume al passo minimo
-        return Utils::NormalizeVolume(volumePerTarget);
+        return Utils::NormalizeVolume(volume);
     }
 
     static double NormalizeVolume(double volume, string symbol = "")
@@ -229,6 +237,12 @@ public:
 
         return volume;
     }
+
+    /**
+     *
+     * ===== OPERAZIONI EXCHANGE RATE
+     *
+     **/
 
     static double GetExchangeRate(string fromCurrency, string toCurrency)
     {

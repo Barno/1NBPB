@@ -72,7 +72,7 @@ public:
 
     // Creazione target
     bool CreateBuyTargetsBelowCandle(int targetHour, int targetMinute, ENUM_TIMEFRAMES timeframe,
-                                     int offsetPointsEntry, int numeroTarget);
+                                     int offsetPointsEntry, int numeroTarget, double &targetRR[], double &targetVolumePercent[]);
 
     // Esecuzione
     bool ExecuteAllTargets();
@@ -117,7 +117,7 @@ void OrderManager::SetBreakevenTrigger(int tpLevel)
 
 // Creazione target
 bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute, ENUM_TIMEFRAMES timeframe,
-                                               int offsetPointsEntry, int numeroTarget)
+                                               int offsetPointsEntry, int numeroTarget, double &targetRR[], double &targetVolumePercent[])
 {
     // === STEP 1: Validazione input ===
     if (numeroTarget <= 0)
@@ -149,10 +149,10 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
 
     // === CALCOLO ENTRY PRICE ===
     // Entry sotto il minimo della candela di riferimento
-    double entryPrice = Utils::GetPriceWithOffset(candleLow, offsetPointsEntry, false);
-    LOG_INFO(StringFormat("[%s] Prezzo Raw che avremmo voluto: %.5f", CLASS_NAME, entryPrice));
-
-    double getRealEntryPrice = UtilsTrade::GetRealEntryPrice(ORDER_TYPE_BUY_LIMIT, candleLow, offsetPointsEntry, false, _Symbol);
+    double entryPriceRaw = Utils::GetPriceWithOffset(candleLow, offsetPointsEntry, false);
+    LOG_INFO(StringFormat("Prezzo Raw che avremmo voluto: %.5f", entryPriceRaw));
+    double entryPrice = UtilsTrade::GetRealEntryPrice(ORDER_TYPE_BUY_LIMIT, candleLow, offsetPointsEntry, false);
+    LOG_INFO(StringFormat("Prezzo calcolato - Reale di ingresso: %.5f", entryPrice));
 
     // === CALCOLO STOP LOSS IN PUNTI ===
     // Stop loss = range completo della candela + offset entry
@@ -160,12 +160,12 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
     double riskDistancePoints = Utils::GetDistanceInPoints(candleLow, candleHigh, g_OffsetPointsRisk);
 
     double stopLossPrice = Utils::GetPriceWithOffset(entryPrice, riskDistancePoints, false);
+    LOG_INFO(StringFormat("Prezzo Stop Loss: %.5f (%.2f punti)", stopLossPrice, riskDistancePoints));
 
     // === CALCOLO LOTTI ===
     // Calcola lotti per target rispettando il risk management divisi per target
-    double volume = Utils::getVolume(riskDistancePoints, numeroTarget, g_RischioPercentuale);
-
-    LOG_INFO(StringFormat("Calculated lots per target: %.2f – volume totale ordine %.2f", volume, volume * numeroTarget));
+    double volume = Utils::getVolume(riskDistancePoints, g_RischioPercentuale);
+    LOG_INFO(StringFormat("[%s] Lotti Totali: %.2f", strategyName, volume));
 
     if (riskDistancePoints <= 0)
     {
@@ -178,32 +178,36 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
     LOG_INFO(StringFormat("[%s] Candle Low: %.5f", strategyName, candleLow));
     LOG_INFO(StringFormat("[%s] Entry Price: %.5f (-%d points)", strategyName, entryPrice, offsetPointsEntry));
     LOG_INFO(riskDistancePoints > 0 ? StringFormat("[%s] Risk Distance: %.2f points", strategyName, riskDistancePoints) : "Risk distance is zero");
-    LOG_INFO(StringFormat("[%s] Volume per target: %.2f", strategyName, volume));
+    LOG_INFO(StringFormat("[%s] Volume totali: %.2f", strategyName, volume));
 
     // === STEP 6: Pulisci target precedenti ===
     targets.Clear();
 
     // === STEP 7: Ciclo creazione target ===
     bool allTargetsCreated = true;
-
+    double distrutedVolume = 0.0;
     for (int i = 1; i <= numeroTarget; i++)
     {
         // Calcola RR per questo target
-        double currentRR = 1.8 + ((i - 1) * 0.2); // 1.8, 2.0, 2.2, 2.4, 2.6...
+        double currentRR = targetRR[i - 1];
+        double volumePercent = Utils::NormalizeVolume(volume * targetVolumePercent[i - 1] / 100.0);
 
+        distrutedVolume += volumePercent;
         // Calcola TP basato su RR
         double takeProfitPrice = Utils::getRR(entryPrice, riskDistancePoints, currentRR);
 
+        // TODO Potenziale perdita, margine richiesto, ecc.
+
         // Crea il target
-        if (CreateSingleBuyTarget(entryPrice, volume, takeProfitPrice, currentRR, i, stopLossPrice))
-        {
-            LOG_INFO(StringFormat("[%s] Target %d created: RR=%.1f, TP=%.5f",
-                                  strategyName, i, currentRR, takeProfitPrice));
-        }
-        else
+        if (!CreateSingleBuyTarget(entryPrice, volumePercent, takeProfitPrice, currentRR, i, stopLossPrice))
         {
             LOG_ERROR(StringFormat("[%s] Failed to create target %d", strategyName, i));
             allTargetsCreated = false;
+        }
+        else
+        {
+            LOG_INFO(StringFormat("[%s] Posizione %d di %d Target %d: RR=%.1f, Volume=%.2f di %.2f (TP=%.5f) Entry=%.5f StopLoss=%.5f",
+                                  strategyName, i, numeroTarget, i, currentRR, volumePercent, volume, takeProfitPrice, entryPrice, stopLossPrice));
         }
     }
 
@@ -211,7 +215,7 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
     if (allTargetsCreated)
     {
         LOG_INFO(StringFormat("[%s] Successfully created all %d targets", strategyName, numeroTarget));
-        LOG_INFO(StringFormat("[%s] Total volume (lotti): %.2f distributed across targets", strategyName, volume * numeroTarget));
+        LOG_INFO(StringFormat("[%s] lotti totali %.2f distributi %.2f su %d posizioni", strategyName, volume, distrutedVolume, numeroTarget));
         return true;
     }
     else

@@ -124,7 +124,7 @@ public:
         }
         // indice 1 perchè questo metodo viene chiamato alla chiusura della candela di riferimento
         // 1 significa quella precedente, 0 quella corrente
-        LOG_INFO("Candle index " + barIndex);
+        // LOG_INFO("Candle index " + barIndex);
 
         double open = iOpen(Symbol(), timeframe, barIndex);
         double high = iHigh(Symbol(), timeframe, barIndex);

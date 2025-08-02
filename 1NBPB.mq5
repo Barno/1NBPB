@@ -26,7 +26,7 @@
 //| Global variables                                                 |
 //+------------------------------------------------------------------+
 DrawOnChart *drawOnChart = NULL; // Istanza della classe per disegnare sul grafico
-OrderManager *om = new OrderManager("Morning Strategy");
+OrderManager *om = new OrderManager("");
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -35,15 +35,11 @@ int OnInit()
 {
     drawOnChart = new DrawOnChart();
     Logger::SetLogLevel(logLevel);
-    LOG_INFO("Messaggio di log", CLASS_NAME);
-    LOG_DEBUG("Debug info");
-    LOG_WARN("Attenzione!");
-    LOG_ERROR("Errore grave!");
 
     // Info di avvio
-    Asset::Initialize();
+    // Asset::Initialize();
     // BrokerInfo::Initialize();
-    BrokerInfo::LogTradingInfo();
+    // BrokerInfo::LogTradingInfo();
 
     if (drawOnChart == NULL)
     {
@@ -62,6 +58,8 @@ int OnInit()
         Logger::LogError("Account initialization failed. Check account settings.");
         return INIT_FAILED; // Inizializza l'account e gestisce errori
     } // Inizializza l'account
+
+    InitializeTargetArrays();
 
     LOG_DEBUG("Account initialized successfully with balance: " + DoubleToString(Account::GetBalance(), 2) + " " + Account::GetCurrency());
 
@@ -108,15 +106,15 @@ void checkCandle()
     if (TradingExecutor::ShouldExecuteTrade(g_HourInput, g_MinuteInput, additionalMinutes, 0, 20))
     {
         LOG_DEBUG("GetExecutedDate: " + TimeToString(TradingExecutor::GetExecutedDate(), TIME_DATE));
-        Print("ESEGUO TRADE!");
-
+        LOG_INFO("ESEGUO TRADE! Ora: " + TimeToString(TimeCurrent(), TIME_SECONDS));
         // Usa gli input invece di valori hardcodati
         CandleAnalyzer::PrintCandleInfo(g_HourInput, g_MinuteInput, g_referenceCandleTimeframe);
 
         if (CandleAnalyzer::IsBearCandle(g_HourInput, g_MinuteInput, g_referenceCandleTimeframe))
         {
             LOG_INFO("Bear candle detected - placing buy stop below low");
-            bool success = om.CreateBuyTargetsBelowCandle(g_HourInput, g_MinuteInput, g_referenceCandleTimeframe, g_OffsetPointsEntry, g_NumeroTarget);
+
+            bool success = om.CreateBuyTargetsBelowCandle(g_HourInput, g_MinuteInput, g_referenceCandleTimeframe, g_OffsetPointsEntry, g_NumeroTarget, g_TargetRR, g_TargetVolumePercent);
             om.PrintAllTargets();
             om.ExecuteAllTargets();
         }
