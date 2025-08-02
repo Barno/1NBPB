@@ -3,7 +3,7 @@
 #define ACCOUNT_MQH
 
 #include <Trade\AccountInfo.mqh>
-#include "Logger.mqh"
+#define CLASS_NAME "ACCOUNT"
 //+------------------------------------------------------------------+
 //| Account Static Facade Class                                    |
 //+------------------------------------------------------------------+
@@ -28,14 +28,14 @@ static CAccountInfo Account::s_accountInfo;
 //| Initialize account (senza Refresh che non esiste)             |
 //+------------------------------------------------------------------+
 static bool Account::Initialize()
-{    
+{
     double balance = s_accountInfo.Balance();
     if (balance < 0)
     {
-        Logger::LogError("Account::Initialize(). Account initialized with balance: " + DoubleToString(balance, 2) +" Invalid balance");        
+        Logger::LogError("Account::Initialize(). Account initialized with balance: " + DoubleToString(balance, 2) + " Invalid balance");
         return false;
     }
-        
+
     return true;
 }
 

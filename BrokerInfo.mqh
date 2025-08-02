@@ -2,7 +2,7 @@
 #ifndef BROKER_INFO_MQH
 #define BROKER_INFO_MQH
 
-#include "Logger.mqh"
+#define CLASS_NAME "BROKER INFO"
 
 class BrokerInfo
 {
@@ -40,31 +40,31 @@ public:
 
 static bool BrokerInfo::Initialize()
 {
-    Logger::Info("BrokerInfo: Collecting essential trading information...");
+    LOG_INFO("BrokerInfo: Collecting essential trading information...");
     return true;
 }
 
 static void BrokerInfo::LogTradingInfo()
 {
-    Logger::Info("=== ESSENTIAL BROKER INFO ===");
-    Logger::Info("Company: " + GetCompanyName());
-    Logger::Info("Server: " + GetServerName());
-    Logger::Info("Account Type: " + GetAccountType());
-    Logger::Info("Leverage: 1:" + IntegerToString(GetLeverage()));
-    Logger::Info("Margin Call: " + DoubleToString(GetMarginCall(), 2) + "%");
-    Logger::Info("Margin Stop Out: " + DoubleToString(GetMarginStopOut(), 2) + "%");
-    Logger::Info("Execution Mode: " + GetExecutionMode());
-    Logger::Info("Connection: " + GetConnectionStatus());
-    Logger::Info("Ping: " + IntegerToString(GetPing()) + "ms");
-    Logger::Info("Server Time: " + TimeToString(GetServerTime(), TIME_DATE | TIME_SECONDS));
-    Logger::Info("GMT Offset: " + IntegerToString(GetGmtOffset()) + " hours");
-    Logger::Info("Server Timezone: " + GetServerTimezone());
-    Logger::Info("Platform: " + GetPlatformInfo());
-    Logger::Info("Max Orders: " + IntegerToString(GetMaxOrders()));
-    Logger::Info("Expert Allowed: " + (IsExpertAllowed() ? "YES" : "NO"));
-    Logger::Info("Trade Allowed: " + (IsTradeAllowed() ? "YES" : "NO"));
+    LOG_INFO("=== ESSENTIAL BROKER INFO ===");
+    LOG_INFO("Company: " + GetCompanyName());
+    LOG_INFO("Server: " + GetServerName());
+    LOG_INFO("Account Type: " + GetAccountType());
+    LOG_INFO("Leverage: 1:" + IntegerToString(GetLeverage()));
+    LOG_INFO("Margin Call: " + DoubleToString(GetMarginCall(), 2) + "%");
+    LOG_INFO("Margin Stop Out: " + DoubleToString(GetMarginStopOut(), 2) + "%");
+    LOG_INFO("Execution Mode: " + GetExecutionMode());
+    LOG_INFO("Connection: " + GetConnectionStatus());
+    LOG_INFO("Ping: " + IntegerToString(GetPing()) + "ms");
+    LOG_INFO("Server Time: " + TimeToString(GetServerTime(), TIME_DATE | TIME_SECONDS));
+    LOG_INFO("GMT Offset: " + IntegerToString(GetGmtOffset()) + " hours");
+    LOG_INFO("Server Timezone: " + GetServerTimezone());
+    LOG_INFO("Platform: " + GetPlatformInfo());
+    LOG_INFO("Max Orders: " + IntegerToString(GetMaxOrders()));
+    LOG_INFO("Expert Allowed: " + (IsExpertAllowed() ? "YES" : "NO"));
+    LOG_INFO("Trade Allowed: " + (IsTradeAllowed() ? "YES" : "NO"));
     PrintFillingModes();
-    Logger::Info("=== END BROKER INFO ===");
+    LOG_INFO("=== END BROKER INFO ===");
 
     // Log timezone dettagliato separato
     LogTimezoneInfo();
@@ -210,9 +210,9 @@ static void BrokerInfo::PrintFillingModes()
 {
     int filling = (int)SymbolInfoInteger(_Symbol, SYMBOL_FILLING_MODE);
     if (filling & SYMBOL_FILLING_IOC)
-        Logger::Info("IOC permesso");
+        LOG_INFO("IOC permesso");
     if (filling & SYMBOL_FILLING_FOK)
-        Logger::Info("FOK permesso");
+        LOG_INFO("FOK permesso");
 }
 
 static bool BrokerInfo::IsDaylightSaving()
@@ -240,14 +240,14 @@ static void BrokerInfo::LogTimezoneInfo()
     datetime gmtTime = TimeGMT();
     datetime localTime = TimeLocal();
 
-    Logger::Info("=== TIMEZONE INFORMATION ===");
-    Logger::Info("Server Time: " + TimeToString(serverTime, TIME_DATE | TIME_SECONDS));
-    Logger::Info("GMT Time: " + TimeToString(gmtTime, TIME_DATE | TIME_SECONDS));
-    Logger::Info("Local Time: " + TimeToString(localTime, TIME_DATE | TIME_SECONDS));
-    Logger::Info("GMT Offset: " + IntegerToString(GetGmtOffset()) + " hours");
-    Logger::Info("Server Timezone: " + GetServerTimezone());
-    Logger::Info("Daylight Saving: " + (IsDaylightSaving() ? "Probably YES" : "Probably NO"));
-    Logger::Info("=== END TIMEZONE INFO ===");
+    LOG_INFO("=== TIMEZONE INFORMATION ===");
+    LOG_INFO("Server Time: " + TimeToString(serverTime, TIME_DATE | TIME_SECONDS));
+    LOG_INFO("GMT Time: " + TimeToString(gmtTime, TIME_DATE | TIME_SECONDS));
+    LOG_INFO("Local Time: " + TimeToString(localTime, TIME_DATE | TIME_SECONDS));
+    LOG_INFO("GMT Offset: " + IntegerToString(GetGmtOffset()) + " hours");
+    LOG_INFO("Server Timezone: " + GetServerTimezone());
+    LOG_INFO("Daylight Saving: " + (IsDaylightSaving() ? "Probably YES" : "Probably NO"));
+    LOG_INFO("=== END TIMEZONE INFO ===");
 }
 
 static bool BrokerInfo::IsTradeAllowed()

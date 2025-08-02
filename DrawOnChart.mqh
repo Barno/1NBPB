@@ -6,7 +6,7 @@
 #property copyright "Copyright 2025, MetaQuotes Ltd."
 #property link "https://www.mql5.com"
 
-#include "Logger.mqh"
+#define CLASS_NAME "Draw On Chart"
 //+------------------------------------------------------------------+
 //| DrawOnChart class                                                |
 //+------------------------------------------------------------------+
@@ -24,12 +24,12 @@ public:
 //+------------------------------------------------------------------+
 DrawOnChart::DrawOnChart()
 {
-  Logger::Debug("DrawOnChart class initialized");
+  LOG_DEBUG("DrawOnChart class initialized");
 }
 
 bool DrawOnChart::DrawArrow(double price, datetime orarioCandela, int fontSize)
 {
-  
+
   if (price == 0)
     price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
@@ -92,7 +92,7 @@ bool DrawOnChart::DeleteAllObjects()
   {
     string objName = ObjectName(0, i);
     ENUM_OBJECT objType = (ENUM_OBJECT)ObjectGetInteger(0, objName, OBJPROP_TYPE);
-    //Print("Oggetto #", i, ": ", objName, " (Tipo: ", EnumToString(objType), ")");
+    // Print("Oggetto #", i, ": ", objName, " (Tipo: ", EnumToString(objType), ")");
   }
 
   // 3. Prova la cancellazione

@@ -1,3 +1,5 @@
+#define CLASS_NAME "CANDLE ANALYZER"
+
 class CandleAnalyzer
 {
 public:
@@ -18,7 +20,7 @@ public:
 
         if (barIndex == -1)
         {
-            Logger::Error("Cannot find exact bar for " + IntegerToString(targetHour) + ":" + IntegerToString(targetMinute));
+            LOG_ERROR("Cannot find exact bar for " + IntegerToString(targetHour) + ":" + IntegerToString(targetMinute));
             return CANDLE_ERROR;
         }
 
@@ -56,7 +58,7 @@ public:
 
         if (barIndex == -1)
         {
-            Logger::Error("Cannot find bar for high price");
+            LOG_ERROR("Cannot find bar for high price");
             return 0.0;
         }
 
@@ -71,7 +73,7 @@ public:
 
         if (barIndex == -1)
         {
-            Logger::Error("Cannot find bar for low price");
+            LOG_ERROR("Cannot find bar for low price");
             return 0.0;
         }
 
@@ -86,7 +88,7 @@ public:
 
         if (barIndex == -1)
         {
-            Logger::Error("Cannot find bar for open price");
+            LOG_ERROR("Cannot find bar for open price");
             return 0.0;
         }
 
@@ -101,7 +103,7 @@ public:
 
         if (barIndex == -1)
         {
-            Logger::Error("Cannot find bar for close price");
+            LOG_ERROR("Cannot find bar for close price");
             return 0.0;
         }
 
@@ -117,12 +119,12 @@ public:
 
         if (barIndex == -1)
         {
-            Logger::Error("Cannot find bar for debug info");
+            LOG_ERROR("Cannot find bar for debug info");
             return;
         }
         // indice 1 perchè questo metodo viene chiamato alla chiusura della candela di riferimento
         // 1 significa quella precedente, 0 quella corrente
-        Logger::Info("Candle index " + barIndex);
+        LOG_INFO("Candle index " + barIndex);
 
         double open = iOpen(Symbol(), timeframe, barIndex);
         double high = iHigh(Symbol(), timeframe, barIndex);
@@ -131,9 +133,9 @@ public:
 
         string candleType = (close < open) ? "BEAR" : "BULL";
 
-        Logger::Info(StringFormat("Candle %d:%02d [%s] - %s | O:%.5f H:%.5f L:%.5f C:%.5f",
-                                  targetHour, targetMinute,
-                                  EnumToString(timeframe), candleType,
-                                  open, high, low, close));
+        LOG_INFO(StringFormat("Candle %d:%02d [%s] - %s | O:%.5f H:%.5f L:%.5f C:%.5f",
+                              targetHour, targetMinute,
+                              EnumToString(timeframe), candleType,
+                              open, high, low, close));
     }
 };

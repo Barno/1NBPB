@@ -2,8 +2,8 @@
 #ifndef ASSET_MQH
 #define ASSET_MQH
 
-#include "Logger.mqh"
-#define ASSET_CACHE_TIMEOUT 30 // ✅ Usa define
+#define ASSET_CACHE_TIMEOUT 30
+#define CLASS_NAME "ASSET"
 
 class Asset
 {
@@ -113,7 +113,7 @@ static double Asset::GetContractSize(const string symbol)
 
     if (contractSize <= 0)
     {
-        Logger::Error("Invalid contract size for symbol: " + symbol);
+        LOG_ERROR("Invalid contract size for symbol: " + symbol);
         return 0.0;
     }
 
@@ -130,7 +130,7 @@ static double Asset::GetLotCost(const string symbol, const double contract, TRAD
 
     if (price <= 0 || contractSize <= 0)
     {
-        Logger::Error("Invalid price or contract size for symbol: " + symbol);
+        LOG_ERROR("Invalid price or contract size for symbol: " + symbol);
         return 0.0;
     }
 
@@ -143,7 +143,7 @@ static double Asset::FreeMarginAvailable()
     double freeMargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
     if (freeMargin < 0)
     {
-        Logger::Error("Free margin is negative: " + DoubleToString(freeMargin, 2));
+        LOG_ERROR("Free margin is negative: " + DoubleToString(freeMargin, 2));
         return 0.0;
     }
     return freeMargin;
@@ -153,7 +153,7 @@ static double Asset::GetMarginRequired(const string symbol, double lots, TRADE t
     // Validazione input
     if (lots <= 0)
     {
-        Logger::Error("Invalid lot size: " + DoubleToString(lots, 3));
+        LOG_ERROR("Invalid lot size: " + DoubleToString(lots, 3));
         return 0.0;
     }
 
@@ -173,14 +173,14 @@ static double Asset::GetMarginRequired(const string symbol, double lots, TRADE t
     }
 
     // Metodo 2: Fallback - calcolo manuale
-    Logger::Warn("OrderCalcMargin failed, using manual calculation for: " + symbol);
+    LOG_WARN("OrderCalcMargin failed, using manual calculation for: " + symbol);
 
     double contractSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_CONTRACT_SIZE);
-    double leverage = AccountInfoInteger(ACCOUNT_LEVERAGE);
+    double leverage = (double)AccountInfoInteger(ACCOUNT_LEVERAGE);
 
     if (contractSize <= 0 || leverage <= 0)
     {
-        Logger::Error("Invalid contract size or leverage for: " + symbol);
+        LOG_ERROR("Invalid contract size or leverage for: " + symbol);
         return 0.0;
     }
 
@@ -197,7 +197,7 @@ static double Asset::GetSpread(const string symbol)
 
     if (spreadPoints <= 0)
     {
-        Logger::Warn("Invalid spread for symbol: " + symbol);
+        LOG_WARN("Invalid spread for symbol: " + symbol);
         return 0.0;
     }
 
@@ -243,7 +243,7 @@ static Asset::ASSET_TYPE Asset::GetAssetType(const string symbol)
     // Aggiorna cache
     UpdateCache(symbol, type);
 
-    Logger::Info("Asset type detected: " + symbol + " = " + EnumToString(type));
+    LOG_INFO("Asset type detected: " + symbol + " = " + EnumToString(type));
     return type;
 }
 
@@ -342,7 +342,7 @@ static double Asset::GetPoint(const string symbol)
     double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
     if (point <= 0)
     {
-        Logger::Error("Invalid point value for symbol: " + symbol);
+        LOG_ERROR("Invalid point value for symbol: " + symbol);
         return 0.0;
     }
     return point;
@@ -353,7 +353,7 @@ static double Asset::GetTickSize(const string symbol)
     double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
     if (tickSize <= 0)
     {
-        Logger::Error("Invalid tick size for symbol: " + symbol);
+        LOG_ERROR("Invalid tick size for symbol: " + symbol);
         return 0.0;
     }
     return tickSize;
@@ -364,7 +364,7 @@ static double Asset::GetTickValue(const string symbol)
     double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
     if (tickValue <= 0)
     {
-        Logger::Error("Invalid tick value for symbol: " + symbol);
+        LOG_ERROR("Invalid tick value for symbol: " + symbol);
         return 0.0;
     }
     return tickValue;
@@ -375,7 +375,7 @@ static int Asset::GetDigits(const string symbol)
     int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
     if (digits < 0)
     {
-        Logger::Error("Invalid digits for symbol: " + symbol);
+        LOG_ERROR("Invalid digits for symbol: " + symbol);
         return 0;
     }
     return digits;
@@ -386,7 +386,7 @@ static string Asset::GetCurrency(const string symbol)
     string currency = SymbolInfoString(symbol, SYMBOL_CURRENCY_BASE);
     if (currency == "")
     {
-        Logger::Warn("Could not get base currency for symbol: " + symbol);
+        LOG_WARN("Could not get base currency for symbol: " + symbol);
         return "UNKNOWN";
     }
     return currency;
@@ -399,7 +399,7 @@ static double Asset::GetMaxLot(const string symbol)
     double maxLot = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
     if (maxLot <= 0)
     {
-        Logger::Error("Invalid maximum lot size for symbol: " + symbol);
+        LOG_ERROR("Invalid maximum lot size for symbol: " + symbol);
         return 0.0;
     }
     return maxLot;
@@ -422,13 +422,13 @@ static bool Asset::IsTradeAllowed(const string symbol)
 
     if (!tradeEnabled)
     {
-        Logger::Warn("Trading not allowed for symbol: " + symbol);
+        LOG_WARN("Trading not allowed for symbol: " + symbol);
         return false;
     }
 
     if (!sessionActive)
     {
-        Logger::Info("Market closed for symbol: " + symbol);
+        LOG_INFO("Market closed for symbol: " + symbol);
         return false;
     }
 
@@ -447,7 +447,7 @@ static double Asset::NormalizePrice(const string symbol, double price)
 
 static bool Asset::Initialize()
 {
-    Logger::Info("Asset class initializing...");
+    LOG_INFO("Asset class initializing...");
 
     // Pulisci cache
     ClearCache();
@@ -457,41 +457,42 @@ static bool Asset::Initialize()
 
     if (!ValidateSymbol(currentSymbol))
     {
-        Logger::Error("Current symbol validation failed: " + currentSymbol);
+        LOG_ERROR("Current symbol validation failed: " + currentSymbol);
         return false;
     }
 
     // Log info del simbolo corrente
     LogAssetInfo(currentSymbol);
 
-    Logger::Info("Asset class initialized successfully");
+    LOG_INFO("Asset class initialized successfully");
     return true;
 }
 
 static void Asset::LogAssetInfo(const string symbol)
 {
-    Logger::Info("=== Asset Info for: " + symbol + " ===");
-    Logger::Info("Type: " + EnumToString(GetAssetType(symbol)));
-    Logger::Info("Digits: " + IntegerToString(GetDigits(symbol)));
-    Logger::Info("Point: " + DoubleToString(GetPoint(symbol), 8));
-    Logger::Info("Spread: " + DoubleToString(GetSpread(symbol), GetDigits(symbol)));
-    Logger::Info("Min Lot: " + DoubleToString(GetMinLot(symbol), 3));
-    Logger::Info("Max Lot: " + DoubleToString(GetMaxLot(symbol), 3));
-    Logger::Info("Lot Step: " + DoubleToString(GetLotStep(symbol), 3));
-    Logger::Info("Contract Size: " + DoubleToString(GetContractSize(symbol), 2));
-    Logger::Info("Currency: " + GetCurrency(symbol));
-    Logger::Info("Trade Allowed: " + (IsTradeAllowed(symbol) ? "YES" : "NO"));
-    Logger::Info("Current Bid: " + DoubleToString(GetBid(symbol), GetDigits(symbol)));
-    Logger::Info("Current Ask: " + DoubleToString(GetAsk(symbol), GetDigits(symbol)));
-    Logger::Info("Get MinStop: " + GetMinStopTrade(symbol) + " points");
-    Logger::Info("=== End Asset Info ===");
+
+    LOG_INFO("==== Asset Info for " + symbol + " ===");
+    LOG_INFO("Type: " + EnumToString(GetAssetType(symbol)));
+    LOG_INFO("Digits: " + IntegerToString(GetDigits(symbol)));
+    LOG_INFO("Point: " + DoubleToString(GetPoint(symbol), 8));
+    LOG_INFO("Spread: " + DoubleToString(GetSpread(symbol), GetDigits(symbol)));
+    LOG_INFO("Min Lot: " + DoubleToString(GetMinLot(symbol), 3));
+    LOG_INFO("Max Lot: " + DoubleToString(GetMaxLot(symbol), 3));
+    LOG_INFO("Lot Step: " + DoubleToString(GetLotStep(symbol), 3));
+    LOG_INFO("Contract Size: " + DoubleToString(GetContractSize(symbol), 2));
+    LOG_INFO("Currency: " + GetCurrency(symbol));
+    LOG_INFO("Trade Allowed: " + (IsTradeAllowed(symbol) ? "YES" : "NO"));
+    LOG_INFO("Current Bid: " + DoubleToString(GetBid(symbol), GetDigits(symbol)));
+    LOG_INFO("Current Ask: " + DoubleToString(GetAsk(symbol), GetDigits(symbol)));
+    LOG_INFO("Get MinStop: " + IntegerToString(GetMinStopTrade(symbol)) + " points");
+    LOG_INFO("=== End Asset Info ===");
 }
 
 static bool Asset::ValidateSymbol(const string symbol)
 {
     if (symbol == "")
     {
-        Logger::Error("Empty symbol provided");
+        LOG_ERROR("Empty symbol provided");
         return false;
     }
 
@@ -502,7 +503,7 @@ static bool Asset::ValidateSymbol(const string symbol)
         // Prova ad aggiungerlo al Market Watch
         if (!SymbolSelect(symbol, true))
         {
-            Logger::Error("Symbol not found and cannot be added: " + symbol);
+            LOG_ERROR("Symbol not found and cannot be added: " + symbol);
             return false;
         }
     }
@@ -513,7 +514,7 @@ static bool Asset::ValidateSymbol(const string symbol)
 
     if (bid <= 0 || ask <= 0)
     {
-        Logger::Warn("Invalid price data for symbol: " + symbol);
+        LOG_WARN("Invalid price data for symbol: " + symbol);
         return false;
     }
 
@@ -521,10 +522,8 @@ static bool Asset::ValidateSymbol(const string symbol)
 }
 
 /**
- * Ottiene il minimo stop trade in punti per il simbolo corrente.
- * Cioè il livello minimo di stop trade che può essere impostato.
- * Utilizza SYMBOL_TRADE_STOPS_LEVEL per ottenere il livello minimo di stop trade.
- * Se il valore è negativo o zero, restituisce 0 e logga un errore.
+ * Ottiene il minimo stop trade in punti per il simbolo corrente.SYMBOL_TRADE_STOPS_LEVEL indica la distanza minima (in punti) dal prezzo corrente a cui puoi piazzare un ordine pending (come buy limit, sell limit, buy stop, sell stop) o impostare uno stop loss/take profit.
+ • Se provi a piazzare un ordine troppo vicino al prezzo attuale, il broker lo rifiuta.
  */
 static int Asset::GetMinStopTrade(const string symbol)
 {
@@ -532,7 +531,7 @@ static int Asset::GetMinStopTrade(const string symbol)
     int stopsLevel = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
     if (stopsLevel < 0)
     {
-        Logger::Error("Invalid minimum stop trade for symbol: " + symbol);
+        LOG_ERROR("Invalid minimum stop trade for symbol: " + symbol);
         return 0;
     }
     return stopsLevel;

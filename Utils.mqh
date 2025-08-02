@@ -1,6 +1,16 @@
 
 #include "Enums.mqh"
 
+#define CLASS_NAME "UTILS"
+/**
+ *  Documentatione per operazioni di trading: https://www.mql5.com/en/docs/trading
+ *
+ *
+ *
+ * */
+
+// https://www.mql5.com/en/docs/trading
+
 class Utils
 {
 
@@ -208,7 +218,8 @@ public:
         // Normalizza al lot step più vicino
         if (volumeStep > 0)
         {
-            volume = MathRound(volume / volumeStep) * volumeStep;
+            // Usa MathFloor per arrotondare verso il basso al passo più vicino
+            volume = MathFloor(volume / volumeStep) * volumeStep;
             volume = NormalizeDouble(volume, 2);
         }
 
@@ -229,13 +240,13 @@ public:
 
         if (conversionSymbol == "")
         {
-            Logger::Error("Cannot find conversion pair for " + fromCurrency + "/" + toCurrency);
+            LOG_ERROR("Cannot find conversion pair for " + fromCurrency + "/" + toCurrency);
             return 1.0; // Fallback
         }
 
         double rate = GetConversionRate(conversionSymbol, fromCurrency, toCurrency);
 
-        // Logger::Info(StringFormat("Exchange rate %s/%s: %.5f (via %s)",
+        // LOG_INFO(StringFormat("Exchange rate %s/%s: %.5f (via %s)",
         //                           fromCurrency, toCurrency, rate, conversionSymbol));
 
         return rate;

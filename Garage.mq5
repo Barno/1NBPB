@@ -1,13 +1,13 @@
 // Preprocessor directives
 #include <Trade\AccountInfo.mqh>
-CAccountInfo account;  // Perfetto qui!
-
+CAccountInfo account; // Perfetto qui!
 
 int OnInit()
 {
     double minVolume = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
     double maxVolume = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
     double stepVolume = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+
     Print("Minimum Volume: " + minVolume);
     Print("Maximum Volume: " + maxVolume);
     Print("Volume Step: " + stepVolume);
@@ -21,24 +21,23 @@ int OnInit()
     Print("MARGIN " + AccountInfoDouble(ACCOUNT_MARGIN));
     Print("LOGIN " + AccountInfoInteger(ACCOUNT_LOGIN));
 
-
-     // Stampa info complete account
+    // Stampa info complete account
     Print("=== ACCOUNT INFO ===");
     Print("Balance: ", account.Balance());
-    Print("Equity: ", account.Equity());  
+    Print("Equity: ", account.Equity());
     Print("Margin Level: ", account.MarginLevel(), "%");
     Print("Company: ", account.Company());
     Print("Leverage: 1:", account.Leverage());
     Print("LEVERAGE " + AccountInfoInteger(ACCOUNT_LEVERAGE));
-    
+
     // Controlli iniziali
-    if(account.MarginLevel() < 100 && account.Margin() > 0)
+    if (account.MarginLevel() < 100 && account.Margin() > 0)
     {
         Print("⚠️ WARNING: Starting with low margin level!");
     }
-    
+
     // Validazioni pre-trading
-    if(account.Leverage() < 50)
+    if (account.Leverage() < 50)
     {
         Print("⚠️ Low leverage detected: 1:", account.Leverage());
     }
@@ -74,7 +73,7 @@ int OnInit()
             CheckMarginExample(symbols[i], maxVol);
 
             double stepVol = SymbolInfoDouble(symbols[i], SYMBOL_VOLUME_STEP);
-            Print("MARGIN LEVEL "+ account.MarginLevel());
+            Print("MARGIN LEVEL " + account.MarginLevel());
             // Print(symbols[i], " step volume: ", stepVol);
         }
     }

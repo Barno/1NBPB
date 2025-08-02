@@ -7,41 +7,21 @@
 #property link "https://www.mql5.com"
 #property version "1.00"
 
-#include "DrawOnChart.mqh"
-#include "Utils.mqh"
-#include "TimeUtils.mqh"
-#include "Account.mqh"
+// Ordine include è importante anche nelle classi successive, InputConfiguration dichiaro per primo ha tutte variabili globali in tutte le classi
 #include "Logger.mqh"
+#include "InputConfiguration.mqh"
+#include "Utils.mqh"
+#include "UtilsTrade.mqh"
+#include "TimeUtils.mqh"
+#include "DrawOnChart.mqh"
+#include "Account.mqh"
 #include "Asset.mqh"
 #include "CandleAnalyzer.mqh"
 #include "OrderManager.mqh"
 #include "BrokerInfo.mqh"
 #include "TradingExecutor.mqh"
 
-input group "===  ORA CANDELA DI RIFERIMENTO ===";
-input ENUM_TIMEFRAMES referenceCandleTimeframe = PERIOD_M5; // Timeframe per candela di riferimento
-input int HourInput = 10;                                   // Ora Candela di riferimento
-input int MinuteInput = 0;                                  // Minuti di riferimento per l'operazione
-
-input group "===  LIVELLO DI LOG ===";
-input Logger::LOG_LEVEL logLevel = Logger::LOG_DEBUG; // Livello di log
-
-input group "=== OPZIONI DI ENTRATA ===";
-input int OffsetPoints = 5; // Punti di offset dal high/low
-input int Deviation = 5;    // Quantità di punti di deviazione che si accettano per l'ordine (slippage)
-
-input group "===  TAKE PROFIT PRINCIPALI ===";
-input int NumeroTarget = 2;
-input double TP1_RiskReward = 1.8;         // TP1: Rapporto Rischio/Rendimento (1:0.5)
-input double TP1_PercentualeVolume = 50.0; // TP1: Percentuale volume posizione (%)
-input double TP2_RiskReward = 3.0;         // TP2: Rapporto Rischio/Rendimento (1:3.0)
-input double TP2_PercentualeVolume = 50.0; // TP2: Percentuale volume posizione (%)
-input bool AttivareBreakevenDopoTP = true; // Attiva breakeven automatico dopo TP
-input int BreakevenAfterTPNumber = 1;      // Dopo quale TP attivare breakeven (1,2,
-
-input group "===  GESTIONE RISCHIO ===" input double RischioPercentuale = 0.5; // Percentuale rischio per trade (% del capitale) ()
-input bool UsaEquityPerRischio = true;                                         // MODALITÀ RISCHIO: false=Balance fisso, true=Equity dinamico
-
+#define CLASS_NAME "1NBPB"
 //+------------------------------------------------------------------+
 //| Global variables                                                 |
 //+------------------------------------------------------------------+
@@ -55,6 +35,10 @@ int OnInit()
 {
     drawOnChart = new DrawOnChart();
     Logger::SetLogLevel(logLevel);
+    LOG_INFO("Messaggio di log", CLASS_NAME);
+    LOG_DEBUG("Debug info");
+    LOG_WARN("Attenzione!");
+    LOG_ERROR("Errore grave!");
 
     // Info di avvio
     Asset::Initialize();
@@ -67,9 +51,9 @@ int OnInit()
         return INIT_FAILED;
     }
 
-    if (!drawOnChart.DrawArrow(0, Utils::CreateDateTime(HourInput, MinuteInput)))
+    if (!drawOnChart.DrawArrow(0, Utils::CreateDateTime(g_HourInput, g_MinuteInput)))
     {
-        Logger::LogError("Failed to draw arrow on chart at " + TimeToString(Utils::CreateDateTime(HourInput, MinuteInput), TIME_DATE | TIME_MINUTES));
+        Logger::LogError("Failed to draw arrow on chart at " + TimeToString(Utils::CreateDateTime(g_HourInput, g_MinuteInput), TIME_DATE | TIME_MINUTES));
         return INIT_FAILED;
     }
 
@@ -79,7 +63,7 @@ int OnInit()
         return INIT_FAILED; // Inizializza l'account e gestisce errori
     } // Inizializza l'account
 
-    Logger::Debug("Account initialized successfully with balance: " + DoubleToString(Account::GetBalance(), 2) + " " + Account::GetCurrency());
+    LOG_DEBUG("Account initialized successfully with balance: " + DoubleToString(Account::GetBalance(), 2) + " " + Account::GetCurrency());
 
     EventSetTimer(60);
     return (INIT_SUCCEEDED);
@@ -96,17 +80,17 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
 {
-    // Logger::Info("Current Bid: " + DoubleToString(Asset::GetBid(_Symbol), 5));
-    // Logger::Info("Current Ask: " + DoubleToString(Asset::GetAsk(_Symbol), 5));
-    // Logger::Info("Point Spread: " + IntegerToString(Asset::GetPointSpread(_Symbol)));
-    // Logger::Info("Current Spread: " + DoubleToString(Asset::GetSpread(_Symbol), 5));
+    // LOG_INFO("Current Bid: " + DoubleToString(Asset::GetBid(_Symbol), 5));
+    // LOG_INFO("Current Ask: " + DoubleToString(Asset::GetAsk(_Symbol), 5));
+    // LOG_INFO("Point Spread: " + IntegerToString(Asset::GetPointSpread(_Symbol)));
+    // LOG_INFO("Current Spread: " + DoubleToString(Asset::GetSpread(_Symbol), 5));
 
-    // Logger::Info("Prezzo Neutrale "+Asset::GetLastPrice(_Symbol));
-    // Logger::Info("Costo BUY "+Asset::GetLotCost(_Symbol, Asset::GetMinLot(_Symbol),Asset::BUY)); // Esempio di chiamata per verificare Asset
-    // Logger::Info("Costo SELL "+Asset::GetLotCost(_Symbol, Asset::GetMinLot(_Symbol),Asset::SELL)); // Esempio di chiamata per verificare Asset
-    // Logger::Info("Margin Richiesto Buy "+Asset::GetMarginRequired(_Symbol, 0.01));
-    // Logger::Info("Margin Richiesto Sell "+Asset::GetMarginRequired(_Symbol, 0.01, Asset::SELL));
-    // Logger::Info("Margine Libero "+Asset::FreeMarginAvailable());
+    // LOG_INFO("Prezzo Neutrale "+Asset::GetLastPrice(_Symbol));
+    // LOG_INFO("Costo BUY "+Asset::GetLotCost(_Symbol, Asset::GetMinLot(_Symbol),Asset::BUY)); // Esempio di chiamata per verificare Asset
+    // LOG_INFO("Costo SELL "+Asset::GetLotCost(_Symbol, Asset::GetMinLot(_Symbol),Asset::SELL)); // Esempio di chiamata per verificare Asset
+    // LOG_INFO("Margin Richiesto Buy "+Asset::GetMarginRequired(_Symbol, 0.01));
+    // LOG_INFO("Margin Richiesto Sell "+Asset::GetMarginRequired(_Symbol, 0.01, Asset::SELL));
+    // LOG_INFO("Margine Libero "+Asset::FreeMarginAvailable());
 
     // Calcola minuti aggiuntivi dal timeframe
     checkCandle();
@@ -118,27 +102,27 @@ void checkCandle()
 
     if (additionalMinutes == -1)
     {
-        additionalMinutes = TimeUtils::getMinutesFromPeriod(referenceCandleTimeframe);
+        additionalMinutes = TimeUtils::getMinutesFromPeriod(g_referenceCandleTimeframe);
     }
 
-    if (TradingExecutor::ShouldExecuteTrade(HourInput, MinuteInput, additionalMinutes, 0, 20))
+    if (TradingExecutor::ShouldExecuteTrade(g_HourInput, g_MinuteInput, additionalMinutes, 0, 20))
     {
-        Logger::Debug("GetExecutedDate: " + TimeToString(TradingExecutor::GetExecutedDate(), TIME_DATE));
+        LOG_DEBUG("GetExecutedDate: " + TimeToString(TradingExecutor::GetExecutedDate(), TIME_DATE));
         Print("ESEGUO TRADE!");
 
         // Usa gli input invece di valori hardcodati
-        CandleAnalyzer::PrintCandleInfo(HourInput, MinuteInput, referenceCandleTimeframe);
+        CandleAnalyzer::PrintCandleInfo(g_HourInput, g_MinuteInput, g_referenceCandleTimeframe);
 
-        if (CandleAnalyzer::IsBearCandle(HourInput, MinuteInput, referenceCandleTimeframe))
+        if (CandleAnalyzer::IsBearCandle(g_HourInput, g_MinuteInput, g_referenceCandleTimeframe))
         {
-            Logger::Info("Bear candle detected - placing buy stop below low");
-            bool success = om.CreateBuyTargetsBelowCandle(HourInput, MinuteInput, referenceCandleTimeframe, OffsetPoints, NumeroTarget);
+            LOG_INFO("Bear candle detected - placing buy stop below low");
+            bool success = om.CreateBuyTargetsBelowCandle(g_HourInput, g_MinuteInput, g_referenceCandleTimeframe, g_OffsetPointsEntry, g_NumeroTarget);
             om.PrintAllTargets();
             om.ExecuteAllTargets();
         }
         else
         {
-            Logger::Info("Bull candle detected - placing sell stop above high");
+            LOG_INFO("Bull candle detected - placing sell stop above high");
         }
     }
 
@@ -151,10 +135,10 @@ void OnTimer()
 
     if (currentDay != lastCheckDay)
     {
-        Logger::Info(" Nuovo giorno: " + TimeToString(currentDay, TIME_DATE));
+        LOG_INFO(" Nuovo giorno: " + TimeToString(currentDay, TIME_DATE));
 
         drawOnChart.DeleteAllObjects();
-        drawOnChart.DrawArrow(0, Utils::CreateDateTime(HourInput, MinuteInput));
+        drawOnChart.DrawArrow(0, Utils::CreateDateTime(g_HourInput, g_MinuteInput));
         lastCheckDay = currentDay;
     }
 }

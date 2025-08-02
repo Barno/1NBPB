@@ -1,5 +1,9 @@
+#ifndef ORDERMANAGER_MQH
+#define ORDERMANAGER_MQH
+
 #include <Arrays\ArrayObj.mqh>
-#include "Utils.mqh"
+
+#define CLASS_NAME "ORDER MANAGER"
 
 // === CLASSE TARGET INFO ===
 class CTargetInfo : public CObject
@@ -68,7 +72,7 @@ public:
 
     // Creazione target
     bool CreateBuyTargetsBelowCandle(int targetHour, int targetMinute, ENUM_TIMEFRAMES timeframe,
-                                     double offsetPoints, int NumeroTarget);
+                                     int offsetPointsEntry, int numeroTarget);
 
     // Esecuzione
     bool ExecuteAllTargets();
@@ -94,31 +98,31 @@ OrderManager::OrderManager(string name)
     entryPrice = 0.0;
     targets.Clear();
 
-    Logger::Info("[" + strategyName + "] OrderManager initialized");
+    LOG_INFO("[" + strategyName + "] OrderManager initialized");
 }
 
 // Distruttore
 OrderManager::~OrderManager(void)
 {
     targets.Clear(); // Cleanup automatico di tutti i CTargetInfo
-    Logger::Info("[" + strategyName + "] OrderManager destroyed");
+    LOG_INFO("[" + strategyName + "] OrderManager destroyed");
 }
 
 // Configurazione breakeven trigger
 void OrderManager::SetBreakevenTrigger(int tpLevel)
 {
     breakevenTriggerLevel = tpLevel;
-    Logger::Info(StringFormat("[%s] Breakeven trigger set to TP%d", strategyName, tpLevel));
+    LOG_INFO(StringFormat("[%s] Breakeven trigger set to TP%d", strategyName, tpLevel));
 }
 
 // Creazione target
 bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute, ENUM_TIMEFRAMES timeframe,
-                                               double offsetPoints, int NumeroTarget)
+                                               int offsetPointsEntry, int numeroTarget)
 {
     // === STEP 1: Validazione input ===
-    if (NumeroTarget <= 0)
+    if (numeroTarget <= 0)
     {
-        Logger::Error("[" + strategyName + "] Invalid NumeroTarget: " + IntegerToString(NumeroTarget));
+        LOG_ERROR("[" + strategyName + "] Invalid numeroTarget: " + IntegerToString(numeroTarget));
         return false;
     }
 
@@ -128,52 +132,53 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
 
     if (candleLow == 0.0)
     {
-        Logger::Error("[" + strategyName + "] Cannot get candle low for " +
-                      IntegerToString(targetHour) + ":" + IntegerToString(targetMinute));
+        LOG_ERROR("[" + strategyName + "] Cannot get candle low for " +
+                  IntegerToString(targetHour) + ":" + IntegerToString(targetMinute));
         return false;
     }
 
+    /**
     // TEST UK100 Five Percent Online Ltd
     //  candleHigh = 9136.04;
     //  candleLow = 9141.60;
-    //  offsetPoints = 0;
+    //  offsetPointsEntry = 0;
     //  EXPECTED_RISK_DISTANCE_POINTS = 556.0
     //  EXPECTED_TAKE_PROFIT_PRICE = 9151.61
     //  EXPECTED_RISK_REWARD_RATIO = 1.8
-
-    // === STEP 3: Calcola prezzo di entry ===
-    // entryPrice = candleLow - (offsetPoints * _Point);
-    // entryPrice = NormalizeDouble(entryPrice, _Digits);
+    **/
 
     // === CALCOLO ENTRY PRICE ===
     // Entry sotto il minimo della candela di riferimento
-    double entryPrice = Utils::GetPriceWithOffset(candleLow, offsetPoints, false);
+    double entryPrice = Utils::GetPriceWithOffset(candleLow, offsetPointsEntry, false);
+    LOG_INFO(StringFormat("[%s] Prezzo Raw che avremmo voluto: %.5f", CLASS_NAME, entryPrice));
+
+    double getRealEntryPrice = UtilsTrade::GetRealEntryPrice(ORDER_TYPE_BUY_LIMIT, candleLow, offsetPointsEntry, false, _Symbol);
 
     // === CALCOLO STOP LOSS IN PUNTI ===
     // Stop loss = range completo della candela + offset entry
     // Logica: rischi dalla candela completa + punti aggiuntivi dell'offset
-    double riskDistancePoints = Utils::GetDistanceInPoints(candleLow, candleHigh, offsetPoints);
+    double riskDistancePoints = Utils::GetDistanceInPoints(candleLow, candleHigh, g_OffsetPointsRisk);
 
     double stopLossPrice = Utils::GetPriceWithOffset(entryPrice, riskDistancePoints, false);
 
     // === CALCOLO LOTTI ===
-    // Calcola lotti massimi rispettando il risk management divisi per target
-    double volume = Utils::getVolume(riskDistancePoints, NumeroTarget, RischioPercentuale);
+    // Calcola lotti per target rispettando il risk management divisi per target
+    double volume = Utils::getVolume(riskDistancePoints, numeroTarget, g_RischioPercentuale);
 
-    Logger::Info(StringFormat("Calculated lots per target: %.2f – volume totale ordine %.2f", volume, volume * NumeroTarget));
+    LOG_INFO(StringFormat("Calculated lots per target: %.2f – volume totale ordine %.2f", volume, volume * numeroTarget));
 
     if (riskDistancePoints <= 0)
     {
-        Logger::Error("[" + strategyName + "] Invalid risk distance: " + DoubleToString(riskDistancePoints, _Digits));
+        LOG_ERROR("[" + strategyName + "] Invalid risk distance: " + DoubleToString(riskDistancePoints, _Digits));
         return false;
     }
 
     // === STEP 5: Info iniziale ===
-    Logger::Info(StringFormat("[%s] === Creating %d BUY targets ===", strategyName, NumeroTarget));
-    Logger::Info(StringFormat("[%s] Candle Low: %.5f", strategyName, candleLow));
-    Logger::Info(StringFormat("[%s] Entry Price: %.5f (-%d points)", strategyName, entryPrice, (int)offsetPoints));
-    Logger::Info(riskDistancePoints > 0 ? StringFormat("[%s] Risk Distance: %.2f points", strategyName, riskDistancePoints) : "Risk distance is zero");
-    Logger::Info(StringFormat("[%s] Volume per target: %.2f", strategyName, volume));
+    LOG_INFO(StringFormat("[%s] === Creating %d BUY targets ===", strategyName, numeroTarget));
+    LOG_INFO(StringFormat("[%s] Candle Low: %.5f", strategyName, candleLow));
+    LOG_INFO(StringFormat("[%s] Entry Price: %.5f (-%d points)", strategyName, entryPrice, offsetPointsEntry));
+    LOG_INFO(riskDistancePoints > 0 ? StringFormat("[%s] Risk Distance: %.2f points", strategyName, riskDistancePoints) : "Risk distance is zero");
+    LOG_INFO(StringFormat("[%s] Volume per target: %.2f", strategyName, volume));
 
     // === STEP 6: Pulisci target precedenti ===
     targets.Clear();
@@ -181,7 +186,7 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
     // === STEP 7: Ciclo creazione target ===
     bool allTargetsCreated = true;
 
-    for (int i = 1; i <= NumeroTarget; i++)
+    for (int i = 1; i <= numeroTarget; i++)
     {
         // Calcola RR per questo target
         double currentRR = 1.8 + ((i - 1) * 0.2); // 1.8, 2.0, 2.2, 2.4, 2.6...
@@ -192,12 +197,12 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
         // Crea il target
         if (CreateSingleBuyTarget(entryPrice, volume, takeProfitPrice, currentRR, i, stopLossPrice))
         {
-            Logger::Info(StringFormat("[%s] Target %d created: RR=%.1f, TP=%.5f",
-                                      strategyName, i, currentRR, takeProfitPrice));
+            LOG_INFO(StringFormat("[%s] Target %d created: RR=%.1f, TP=%.5f",
+                                  strategyName, i, currentRR, takeProfitPrice));
         }
         else
         {
-            Logger::Error(StringFormat("[%s] Failed to create target %d", strategyName, i));
+            LOG_ERROR(StringFormat("[%s] Failed to create target %d", strategyName, i));
             allTargetsCreated = false;
         }
     }
@@ -205,13 +210,13 @@ bool OrderManager::CreateBuyTargetsBelowCandle(int targetHour, int targetMinute,
     // === STEP 8: Risultato finale ===
     if (allTargetsCreated)
     {
-        Logger::Info(StringFormat("[%s] Successfully created all %d targets", strategyName, NumeroTarget));
-        Logger::Info(StringFormat("[%s] Total volume (lotti): %.2f distributed across targets", strategyName, volume * NumeroTarget));
+        LOG_INFO(StringFormat("[%s] Successfully created all %d targets", strategyName, numeroTarget));
+        LOG_INFO(StringFormat("[%s] Total volume (lotti): %.2f distributed across targets", strategyName, volume * numeroTarget));
         return true;
     }
     else
     {
-        Logger::Error("[" + strategyName + "] Some targets failed to create");
+        LOG_ERROR("[" + strategyName + "] Some targets failed to create");
         return false;
     }
 }
@@ -221,14 +226,14 @@ bool OrderManager::ExecuteAllTargets()
 {
     if (targets.Total() == 0)
     {
-        Logger::Warn("[" + strategyName + "] No targets to execute");
+        LOG_WARN("[" + strategyName + "] No targets to execute");
         return false;
     }
 
     bool allSuccess = true;
     int executedCount = 0;
 
-    Logger::Info(StringFormat("[%s] Executing %d targets...", strategyName, targets.Total()));
+    LOG_INFO(StringFormat("[%s] Executing %d targets...", strategyName, targets.Total()));
 
     for (int i = 0; i < targets.Total(); i++)
     {
@@ -238,7 +243,7 @@ bool OrderManager::ExecuteAllTargets()
 
         if (!OrderCheck(target.request, target.check))
         {
-            Logger::Error("OrderCheck fallito: " + target.check.retcode + " - " + target.check.comment);
+            LOG_ERROR("OrderCheck fallito: " + target.check.retcode + " - " + target.check.comment);
             target.ToString();
             continue;
         }
@@ -254,30 +259,30 @@ bool OrderManager::ExecuteAllTargets()
                     target.isRunning = true;
                     executedCount++;
 
-                    Logger::Info(StringFormat("[%s] Target %d executed: Ticket=%d, RR=%.1f",
-                                              strategyName, target.targetLevel,
-                                              target.result.order, target.riskReward));
+                    LOG_INFO(StringFormat("[%s] Target %d executed: Ticket=%d, RR=%.1f",
+                                          strategyName, target.targetLevel,
+                                          target.result.order, target.riskReward));
                 }
                 else
                 {
-                    Logger::Error(StringFormat("[%s] Target %d failed: %s (Code: %d)",
-                                               strategyName, target.targetLevel,
-                                               target.result.comment, target.result.retcode));
+                    LOG_ERROR(StringFormat("[%s] Target %d failed: %s (Code: %d)",
+                                           strategyName, target.targetLevel,
+                                           target.result.comment, target.result.retcode));
                     allSuccess = false;
                 }
             }
             else
             {
                 int error = GetLastError();
-                Logger::Error(StringFormat("[%s] OrderSend failed for target %d. Error: %d",
-                                           strategyName, target.targetLevel, error));
+                LOG_ERROR(StringFormat("[%s] OrderSend failed for target %d. Error: %d",
+                                       strategyName, target.targetLevel, error));
                 allSuccess = false;
             }
         }
     }
 
-    Logger::Info(StringFormat("[%s] Execution completed: %d/%d targets executed successfully",
-                              strategyName, executedCount, targets.Total()));
+    LOG_INFO(StringFormat("[%s] Execution completed: %d/%d targets executed successfully",
+                          strategyName, executedCount, targets.Total()));
 
     return allSuccess;
 }
@@ -320,7 +325,7 @@ bool OrderManager::CloseAllTargets()
 {
     if (targets.Total() == 0)
     {
-        Logger::Info("[" + strategyName + "] No targets to close");
+        LOG_INFO("[" + strategyName + "] No targets to close");
         return true;
     }
 
@@ -344,7 +349,7 @@ bool OrderManager::CloseAllTargets()
             // 1. Verifica la validità dell'ordine con OrderCheck
             if (!OrderCheck(target.request, target.check))
             {
-                Logger::Error("OrderCheck fallito: " + target.check.retcode + " - " + target.check.comment);
+                LOG_ERROR("OrderCheck fallito: " + target.check.retcode + " - " + target.check.comment);
                 target.ToString();
                 continue;
             }
@@ -353,20 +358,20 @@ bool OrderManager::CloseAllTargets()
             {
                 target.isRunning = false;
                 closedCount++;
-                Logger::Info("[" + strategyName + "] Target " + IntegerToString(target.targetLevel) +
-                             " closed (Ticket: " + IntegerToString(target.result.order) + ")");
+                LOG_INFO("[" + strategyName + "] Target " + IntegerToString(target.targetLevel) +
+                         " closed (Ticket: " + IntegerToString(target.result.order) + ")");
             }
             else
             {
                 allClosed = false;
-                Logger::Error("[" + strategyName + "] Failed to close target " +
-                              IntegerToString(target.targetLevel));
+                LOG_ERROR("[" + strategyName + "] Failed to close target " +
+                          IntegerToString(target.targetLevel));
             }
         }
     }
 
-    Logger::Info(StringFormat("[%s] Close operation completed: %d targets closed",
-                              strategyName, closedCount));
+    LOG_INFO(StringFormat("[%s] Close operation completed: %d targets closed",
+                          strategyName, closedCount));
 
     return allClosed;
 }
@@ -378,22 +383,22 @@ void OrderManager::PrintAllTargets()
 
     if (targetCount == 0)
     {
-        Logger::Info("[" + strategyName + "] No targets created yet");
+        LOG_INFO("[" + strategyName + "] No targets created yet");
         return;
     }
 
-    Logger::Info(StringFormat("[%s] === %d Targets Summary ===", strategyName, targetCount));
+    LOG_INFO(StringFormat("[%s] === %d Targets Summary ===", strategyName, targetCount));
 
     for (int i = 0; i < targetCount; i++)
     {
         CTargetInfo *target = targets.At(i);
         if (target != NULL)
         {
-            Logger::Info("[" + strategyName + "] " + target.ToString());
+            LOG_INFO("[" + strategyName + "] " + target.ToString());
         }
     }
 
-    Logger::Info("[" + strategyName + "] === End Summary ===");
+    LOG_INFO("[" + strategyName + "] === End Summary ===");
 }
 
 // === IMPLEMENTAZIONI METODI PRIVATI ===
@@ -407,7 +412,7 @@ bool OrderManager::CreateSingleBuyTarget(double entryPrice, double volume, doubl
 
     if (target == NULL)
     {
-        Logger::Error("[" + strategyName + "] Failed to create CTargetInfo object");
+        LOG_ERROR("[" + strategyName + "] Failed to create CTargetInfo object");
         return false;
     }
 
@@ -421,7 +426,7 @@ bool OrderManager::CreateSingleBuyTarget(double entryPrice, double volume, doubl
     target.request.sl = stopLossPrice; // SL gestito separatamente per breakeven prezzo
     target.request.magic = Utils::GenerateUniqueMagic();
     target.request.comment = StringFormat("%s-T%d-RR%.1f", strategyName, level, rr);
-    target.request.deviation = Deviation;
+    target.request.deviation = g_Deviation;
     target.request.type_filling = ORDER_FILLING_FOK;
 
     // === Configura info aggiuntive ===
@@ -433,8 +438,8 @@ bool OrderManager::CreateSingleBuyTarget(double entryPrice, double volume, doubl
     // === Validazione finale ===
     if (volume <= 0 || entryPrice <= 0 || takeProfit <= entryPrice)
     {
-        Logger::Error(StringFormat("[%s] Invalid target parameters: Vol=%.2f, Entry=%.5f, TP=%.5f",
-                                   strategyName, volume, entryPrice, takeProfit));
+        LOG_ERROR(StringFormat("[%s] Invalid target parameters: Vol=%.2f, Entry=%.5f, TP=%.5f",
+                               strategyName, volume, entryPrice, takeProfit));
         delete target;
         return false;
     }
@@ -442,13 +447,13 @@ bool OrderManager::CreateSingleBuyTarget(double entryPrice, double volume, doubl
     // === Aggiungi al CArrayObj ===
     if (targets.Add(target) == -1)
     {
-        Logger::Error("[" + strategyName + "] Failed to add target to array");
+        LOG_ERROR("[" + strategyName + "] Failed to add target to array");
         delete target;
         return false;
     }
 
-    Logger::Debug(StringFormat("[%s] Target %d prepared: Entry=%.5f, TP=%.5f, Vol=%.2f, RR=%.1f",
-                               strategyName, level, entryPrice, takeProfit, volume, rr));
+    LOG_DEBUG(StringFormat("[%s] Target %d prepared: Entry=%.5f, TP=%.5f, Vol=%.2f, RR=%.1f",
+                           strategyName, level, entryPrice, takeProfit, volume, rr));
 
     return true;
 }
@@ -473,3 +478,5 @@ void OrderManager::SetRemainingTargetsToBreakeven()
     // TODO: Implementare impostazione breakeven
     // Modifica SL dei target rimanenti a breakeven
 }
+
+#endif ORDERMANAGER_MQH

@@ -1,3 +1,5 @@
+#define CLASS_NAME "TRADING EXECUTOR"
+
 class TradingExecutor
 {
 private:
@@ -30,7 +32,7 @@ public:
         {
             executedDate = today;
             lastAttemptTime = currentTime;
-            Logger::Debug("Eseguito in punto! Tempo: " + TimeToString(currentTime, TIME_SECONDS));
+            LOG_DEBUG("Eseguito in punto! Tempo: " + TimeToString(currentTime, TIME_SECONDS));
             return true;
         }
 
@@ -40,7 +42,7 @@ public:
         {
             executedDate = today;
             lastAttemptTime = currentTime;
-            Logger::Warn("Eseguito in retry! Tempo: " + TimeToString(currentTime, TIME_SECONDS));
+            LOG_WARN("Eseguito in retry! Tempo: " + TimeToString(currentTime, TIME_SECONDS));
             return true;
         }
 
